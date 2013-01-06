@@ -19,7 +19,7 @@ use 5.010000;
 use strict;
 use warnings;
 
-our $VERSION = '0.000_001';
+our $VERSION = '0.000_002';
 
 1;
 __END__
@@ -37,7 +37,7 @@ Stub documentation for Marpa::R3, created by h2xs.
 
 =head1 AUTHOR
 
-Jeffrey Kegler, E<lt>jeffreykegler@activestate.comE<gt>
+Jeffrey Kegler
 
 =head1 Copyright and License
 
