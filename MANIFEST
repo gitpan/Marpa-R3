@@ -1,0 +1,11 @@
+COPYING.LESSER
+Changes
+LICENSE
+MANIFEST
+Makefile.PL
+README
+lib/Marpa/R3.pm
+ppport.h
+t/Marpa-R3.t
+META.yml                                 Module YAML meta-data (added by MakeMaker)
+META.json                                Module JSON meta-data (added by MakeMaker)
