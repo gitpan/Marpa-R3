@@ -3,11 +3,19 @@ abstract: 'Release 3 of Marpa'
 author:
   - 'Jeffrey Kegler'
 build_requires:
-  ExtUtils::MakeMaker: 0
+  ExtUtils::CBuilder: 0
 configure_requires:
+  Carp: 1.08
+  Config::AutoConf: 0.22
+  Data::Dumper: 2.125
+  ExtUtils::CBuilder: 0.27
   ExtUtils::MakeMaker: 0
+  List::Util: 1.21
+  Module::Build: 0.3601
+  Scalar::Util: 1.21
+  Test::More: 0.94
 dynamic_config: 1
-generated_by: 'ExtUtils::MakeMaker version 6.62, CPAN::Meta::Converter version 2.112621'
+generated_by: 'Module::Build version 0.4002, CPAN::Meta::Converter version 2.112621'
 license: unknown
 meta-spec:
   url: http://module-build.sourceforge.net/META-spec-v1.4.html
@@ -15,7 +23,122 @@ meta-spec:
 name: Marpa-R3
 no_index:
   directory:
-    - t
-    - inc
-requires: {}
-version: 0.000_002
+    - pperl
+    - tool
+    - libmarpa
+    - author.t
+    - html/etc
+    - html/sandbox
+    - html/script
+    - html/t
+  namespace:
+    - Marpa::R3::Recognizer
+    - Marpa::R3::Grammar
+    - Marpa::R3::HTML
+    - Marpa::R3::Value
+    - Marpa::R3::Perl
+    - Marpa::R3::Test
+    - Marpa::R3::Display
+    - Marpa::R3::Inner
+    - Marpa::R3::Internal
+    - Marpa::R3::Stuifzand
+  package:
+    - Marpa::R3::HTML
+    - Marpa::R3::Value
+    - Marpa::R3::Perl
+    - Marpa::R3::Test
+    - Marpa::R3::Display
+    - Marpa::R3::Inner
+    - Marpa::R3::Internal
+    - Marpa::R3::Stuifzand
+    - Marpa::R3::Thin::Trace
+provides:
+  Marpa::R3:
+    file: lib/Marpa/R3.pm
+    version: 3.001_000
+  Marpa::R3::Grammar:
+    file: lib/Marpa/R3/Grammar.pm
+    version: 3.001_000
+  Marpa::R3::HTML:
+    file: html/lib/Marpa/R3/HTML.pm
+    version: 3.001_000
+  Marpa::R3::HTML::Callback:
+    file: html/lib/Marpa/R3/HTML/Callback.pm
+    version: 3.001_000
+  Marpa::R3::HTML::Config:
+    file: html/lib/Marpa/R3/HTML/Config.pm
+    version: 0
+  Marpa::R3::HTML::Config::Compile:
+    file: html/lib/Marpa/R3/HTML/Config/Compile.pm
+    version: 0
+  Marpa::R3::HTML::Internal:
+    file: html/lib/Marpa/R3/HTML.pm
+    version: 0
+  Marpa::R3::HTML::Internal::Callback:
+    file: html/lib/Marpa/R3/HTML/Callback.pm
+    version: 0
+  Marpa::R3::HTML::Internal::Config::Default:
+    file: html/lib/Marpa/R3/HTML/Config/Default.pm
+    version: 0
+  Marpa::R3::HTML::Internal::Core:
+    file: html/lib/Marpa/R3/HTML/Config/Core.pm
+    version: 0
+  Marpa::R3::Inner::Scanless:
+    file: lib/Marpa/R3/Scanless.pm
+    version: 0
+  Marpa::R3::Inner::Scanless::Symbol:
+    file: lib/Marpa/R3/Scanless.pm
+    version: 0
+  Marpa::R3::Inner::Scanless::Symbol_List:
+    file: lib/Marpa/R3/Scanless.pm
+    version: 0
+  Marpa::R3::Internal:
+    file: lib/Marpa/R3/Internal.pm
+    version: 3.001_000
+  Marpa::R3::Internal::Grammar:
+    file: lib/Marpa/R3/Grammar.pm
+    version: 0
+  Marpa::R3::Internal::Recognizer:
+    file: lib/Marpa/R3/Recognizer.pm
+    version: 0
+  Marpa::R3::Internal::Stuifzand:
+    file: lib/Marpa/R3/Stuifzand.pm
+    version: 0
+  Marpa::R3::Internal::Stuifzand::Symbol:
+    file: lib/Marpa/R3/Stuifzand.pm
+    version: 0
+  Marpa::R3::Internal::Stuifzand::Symbol_List:
+    file: lib/Marpa/R3/Stuifzand.pm
+    version: 0
+  Marpa::R3::Internal::Value:
+    file: lib/Marpa/R3/Value.pm
+    version: 0
+  Marpa::R3::Recognizer:
+    file: lib/Marpa/R3/Recognizer.pm
+    version: 3.001_000
+  Marpa::R3::Scanless:
+    file: lib/Marpa/R3/Scanless.pm
+    version: 3.001_000
+  Marpa::R3::Stuifzand:
+    file: lib/Marpa/R3/Stuifzand.pm
+    version: 3.001_000
+  Marpa::R3::Thin::Trace:
+    file: lib/Marpa/R3/Thin/Trace.pm
+    version: 3.001_000
+  Marpa::R3::Value:
+    file: lib/Marpa/R3/Value.pm
+    version: 3.001_000
+recommends:
+  Config::AutoConf: 0.22
+  ExtUtils::MakeMaker: 0
+  PPI: 1.206
+requires:
+  Carp: 1.08
+  Data::Dumper: 2.125
+  HTML::Entities: 3.68
+  HTML::Parser: 3.69
+  List::Util: 1.21
+  Scalar::Util: 1.21
+resources:
+  repository: git://github.com/jeffreykegler/Marpa-R3.git
+version: 3.001_000
