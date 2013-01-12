@@ -33,7 +33,8 @@ my @packages_for_perl_autoconf = qw( Config::AutoConf ExtUtils::MakeMaker );
 
 my %configure_requires =
     map { ( $_, $Marpa::R3::VERSION_FOR_CONFIG{$_} ) }
-    qw( Module::Build Scalar::Util List::Util Carp Data::Dumper ExtUtils::CBuilder Test::More ),
+    qw( Module::Build CPAN::Meta::Converter
+    Scalar::Util List::Util Carp Data::Dumper ExtUtils::CBuilder Test::More ),
     @packages_for_perl_autoconf;
 my %requires =
     map { ( $_, $Marpa::R3::VERSION_FOR_CONFIG{$_} ) }
@@ -142,7 +143,6 @@ my $build = Marpa::R3::Build_Me->new(
     },
     pod_files          => \%pod_files,
     create_readme      => 0,
-    create_makefile_pl => 'small',
     test_files         => [ map { glob $_ } qw(t/*.t html/t/*.t) ],
     getoptions         => { Dev => {}, 'Marpa-debug' => {} },
 );

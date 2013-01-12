@@ -230,7 +230,7 @@ enum marpa_recce_op {
 
 #define EXPECTED_LIBMARPA_MAJOR 4
 #define EXPECTED_LIBMARPA_MINOR 0
-#define EXPECTED_LIBMARPA_MICRO 1
+#define EXPECTED_LIBMARPA_MICRO 2
 
 MODULE = Marpa::R3        PACKAGE = Marpa::R3::Thin
 

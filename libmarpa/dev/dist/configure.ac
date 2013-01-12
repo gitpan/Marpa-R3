@@ -25,7 +25,7 @@ m4_define(marpa_configure_in)
 
 m4_define([marpa_major_version], [4])
 m4_define([marpa_minor_version], [0])
-m4_define([marpa_micro_version], [1])
+m4_define([marpa_micro_version], [2])
 m4_define([marpa_interface_age], [100])
 m4_define([marpa_binary_age],
           [m4_eval(100 * marpa_minor_version + marpa_micro_version)])
@@ -41,16 +41,7 @@ m4_define([marpa_lt_age], [m4_eval(marpa_binary_age - marpa_interface_age)])
 m4_define([marpa_lt_current_minus_age],
           [m4_eval(marpa_lt_current - marpa_lt_age)])
 
-# I am not using this system, at least not right now.
-# So I've commented it out, while I decide
-# whether to delete these lines permanently or adopt it.
-#
-# if the minor version number is odd, then we want debugging.  Otherwise
-# we only want minimal debugging support.
-# m4_define([marpa_debug_default],
-#          [m4_if(m4_eval(marpa_minor_version % 2), [1], [yes], [minimum])])dnl
-
-AC_INIT([marpa],[marpa_version],[http://rt.cpan.org/NoAuth/Bugs.html?Dist=Marpa])
+AC_INIT([libmarpa],[marpa_version],[http://rt.cpan.org/NoAuth/Bugs.html?Dist=Marpa])
 AC_CONFIG_MACRO_DIR([m4])
 
 AM_INIT_AUTOMAKE([])
@@ -201,5 +192,6 @@ AC_TYPE_INTMAX_T
 AC_C_INLINE
 
 AC_CONFIG_FILES( [Makefile])
+AC_CONFIG_FILES( [VERSION])
 AC_OUTPUT
 

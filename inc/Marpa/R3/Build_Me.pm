@@ -441,11 +441,13 @@ sub do_libmarpa {
     } ## end if ( defined $self->args('Marpa-debug') )
 	
     if ($Marpa::R3::USE_PERL_AUTOCONF) {
-	my @marpa_version =
-	    ( map { $_ + 0 }
-		$self->dist_version()
-		=~ /\A (\d+) [.] (\d{3}) [_]? (\d{3}) \z/xms );
-	my $marpa_version = int($marpa_version[0]) . "." . int($marpa_version[1]) . "." . int($marpa_version[2]);
+
+	open my $libmarpa_version_fh, '<', 'VERSION';
+	my $libmarpa_version = <$libmarpa_version_fh>;
+	close $libmarpa_version_fh;
+	chomp $libmarpa_version;
+	my @libmarpa_version = split /[.]/xms, $libmarpa_version;
+
 	#
 	## C.f. http://fr.slideshare.net/hashashin/building-c-and-c-libraries-with-perl
 	#
@@ -520,14 +522,14 @@ INLINEHOOK
 	    $ac->msg_checking('memset');
 	    my $rc = $ac->compile_if_else($memset);
 	    $ac->define_var('HAVE_MEMSET', $ac->compile_if_else($memset));
-	    $ac->define_var('PACKAGE', "\"marpa\"");
+	    $ac->define_var('PACKAGE', "\"libmarpa\"");
 	    $ac->define_var('PACKAGE_BUGREPORT', "\"http://rt.cpan.org/NoAuth/Bugs.html?Dist=Marpa\"");
-	    $ac->define_var('PACKAGE_NAME', "\"marpa\"");
-	    $ac->define_var('PACKAGE_STRING', "\"marpa $marpa_version[0].$marpa_version[2].$marpa_version[1]\"");
-	    $ac->define_var('PACKAGE_TARNAME', "\"marpa\"");
+	    $ac->define_var('PACKAGE_NAME', "\"libmarpa\"");
+	    $ac->define_var('PACKAGE_STRING', "\"libmarpa $libmarpa_version[0].$libmarpa_version[2].$libmarpa_version[1]\"");
+	    $ac->define_var('PACKAGE_TARNAME', "\"libmarpa\"");
 	    $ac->define_var('PACKAGE_URL', "\"\"");
-	    $ac->define_var('PACKAGE_VERSION', "\"$marpa_version\"");
-	    $ac->define_var('PACKAGE_STRING', "\"$marpa_version\"");
+	    $ac->define_var('PACKAGE_VERSION', "\"$libmarpa_version\"");
+	    $ac->define_var('PACKAGE_STRING', "\"$libmarpa_version\"");
 	    $ac->msg_result($rc ? 'yes' : 'no');
 	    $ac->write_config_h('config_from_autoconf.h');
 	}
@@ -541,12 +543,12 @@ INLINEHOOK
 #ifndef __MARPA_CONFIG_H__
 #define __MARPA_CONFIG_H__
 	
-#define MARPA_MAJOR_VERSION $marpa_version[0]
-#define MARPA_MINOR_VERSION $marpa_version[1]
-#define MARPA_MICRO_VERSION $marpa_version[2]
+#define MARPA_MAJOR_VERSION $libmarpa_version[0]
+#define MARPA_MINOR_VERSION $libmarpa_version[1]
+#define MARPA_MICRO_VERSION $libmarpa_version[2]
 #define MARPA_INTERFACE_AGE 100
-#define MARPA_BINARY_AGE (100 * $marpa_version[2] + $marpa_version[1])
-#define MARPA_VERSION \"$marpa_version\"
+#define MARPA_BINARY_AGE (100 * $libmarpa_version[2] + $libmarpa_version[1])
+#define MARPA_VERSION \"$libmarpa_version\"
 	
 #endif /* __MARPA_CONFIG_H__ */
 MARPA_CONFIG_H
@@ -558,8 +560,8 @@ MARPA_CONFIG_H
 	    my $CCFLAGS = @debug_flags ? "$Config{ccflags} @debug_flags" : '';
 	    print {$makefile_pl_fh} "
 use ExtUtils::MakeMaker;
-WriteMakefile(VERSION        => \"$marpa_version\",
-              XS_VERSION     => \"$marpa_version\",
+WriteMakefile(VERSION        => \"$libmarpa_version\",
+              XS_VERSION     => \"$libmarpa_version\",
               NAME           => 'libmarpa',
               OBJECT         => '@o',
               CCFLAGS        => '$CCFLAGS',

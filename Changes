@@ -15,6 +15,11 @@
 
 Revision history for Marpa::R3
 
+3.001_001
+
+     * Fix problems with Config::AutoConf builds and
+       Libmarpa version numbers.
+
 3.001_000
 
       * Copied from Marpa::R2 2.041_000, and module name

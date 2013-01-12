@@ -24,7 +24,6 @@ MANIFEST
 MANIFEST.SKIP
 META.json
 META.yml
-Makefile.PL
 README
 author.t/.gitignore
 author.t/Makefile
@@ -118,6 +117,7 @@ libmarpa/dev/dist/ChangeLog
 libmarpa/dev/dist/Makefile.am
 libmarpa/dev/dist/NEWS
 libmarpa/dev/dist/README
+libmarpa/dev/dist/VERSION.in
 libmarpa/dev/dist/configure.ac
 libmarpa/dev/doc_dist/AUTHORS
 libmarpa/dev/doc_dist/COPYING.LESSER
@@ -150,6 +150,8 @@ libmarpa_dist/Makefile.am
 libmarpa_dist/Makefile.in
 libmarpa_dist/NEWS
 libmarpa_dist/README
+libmarpa_dist/VERSION
+libmarpa_dist/VERSION.in
 libmarpa_dist/aclocal.m4
 libmarpa_dist/avl.c
 libmarpa_dist/avl.h

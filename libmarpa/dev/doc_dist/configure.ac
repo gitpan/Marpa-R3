@@ -25,7 +25,7 @@ m4_define(marpa_configure_in)
 
 m4_define([marpa_major_version], [4])
 m4_define([marpa_minor_version], [0])
-m4_define([marpa_micro_version], [1])
+m4_define([marpa_micro_version], [2])
 m4_define([marpa_interface_age], [100])
 m4_define([marpa_binary_age],
           [m4_eval(100 * marpa_minor_version + marpa_micro_version)])
@@ -50,7 +50,7 @@ m4_define([marpa_lt_current_minus_age],
 # m4_define([marpa_debug_default],
 #          [m4_if(m4_eval(marpa_minor_version % 2), [1], [yes], [minimum])])dnl
 
-AC_INIT([marpa-doc],[marpa_version],[http://rt.cpan.org/NoAuth/Bugs.html?Dist=Marpa])
+AC_INIT([libmarpa-doc],[marpa_version],[http://rt.cpan.org/NoAuth/Bugs.html?Dist=Marpa])
 AC_CONFIG_MACRO_DIR([m4])
 
 AM_INIT_AUTOMAKE([])

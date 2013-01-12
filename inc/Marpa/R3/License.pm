@@ -28,14 +28,6 @@ my $copyright_line = q{Copyright 2013 Jeffrey Kegler};
 ( my $copyright_line_in_tex = $copyright_line )
     =~ s/ ^ Copyright \s /Copyright \\copyright\\ /xms;
 
-my $closed_license = "$copyright_line\n" . <<'END_OF_STRING';
-This document is not part of the Marpa or Marpa::R3 source.
-Although it may be included with a Marpa distribution that
-is under an open source license, this document is
-not under that open source license.
-Jeffrey Kegler retains full rights.
-END_OF_STRING
-
 my $license_body = <<'END_OF_STRING';
 This file is part of Marpa::R3.  Marpa::R3 is free software: you can
 redistribute it and/or modify it under the terms of the GNU Lesser
@@ -108,7 +100,6 @@ sub c_comment {
 my $c_license          = c_comment($license);
 my $r3_hash_license    = hash_comment($license);
 my $xsh_hash_license    = hash_comment($license, q{ #});
-my $tex_closed_license = hash_comment( $closed_license, q{%} );
 my $tex_license        = hash_comment( $license, q{%} );
 my $tex_cc_a_nd_license = hash_comment( $cc_a_nd_license, q{%} );
 my $indented_license   = $license;
@@ -273,9 +264,10 @@ my %files_by_type = (
     'html/t/fmt_t_data/score_expected1.html' => \&trivial,
     'html/t/fmt_t_data/score_expected2.html' => \&trivial,
     'Makefile.PL'                            => \&trivial,
-    'libmarpa/VERSION'                       => \&trivial,
+    'libmarpa_dist/VERSION'                       => \&trivial,
     'libmarpa/dev/README'                    => \&trivial,
-    'libmarpa/dev/VERSION.in'                => \&trivial,
+    'libmarpa/dev/dist/VERSION.in'           => \&trivial,
+    'libmarpa_dist/VERSION.in'               => \&trivial,
     'libmarpa/dev/api.texi'                 => \&license_problems_in_fdl_file,
     'libmarpa/dev/internal.texi'            => \&license_problems_in_fdl_file,
     'libmarpa_doc_dist/api.texi'            => \&license_problems_in_fdl_file,
@@ -286,11 +278,11 @@ my %files_by_type = (
     'libmarpa/dev/cwebmac.tex' =>
         \&ignored,    # originally from Cweb, leave it alone
 
-     ## GNU license text, leave it alone
-    'libmarpa_doc_dist/fdl-1.3.texi'        => \&ignored,
-    'libmarpa/dev/doc_dist/fdl-1.3.texi' => \&ignored,  
-    'libmarpa/dev/doc_dist/lgpl-3.0.texi' => \&ignored, 
-    'libmarpa_doc_dist/lgpl-3.0.texi'       => \&ignored, 
+    ## GNU license text, leave it alone
+    'libmarpa_doc_dist/fdl-1.3.texi'      => \&ignored,
+    'libmarpa/dev/doc_dist/fdl-1.3.texi'  => \&ignored,
+    'libmarpa/dev/doc_dist/lgpl-3.0.texi' => \&ignored,
+    'libmarpa_doc_dist/lgpl-3.0.texi'     => \&ignored,
 
     'libmarpa/stage/config.h.in' =>
         check_tag( 'Generated from configure.ac by autoheader', 250 ),
@@ -596,37 +588,10 @@ sub license_problems_in_tex_file {
     return @problems;
 } ## end sub license_problems_in_tex_file
 
-# This was the license for the lyx documents
-# For the Latex versions, I switched to CC-A_ND
-sub tex_closed {
-    my ( $filename, $verbose ) = @_;
-    my @problems = ();
-    my $text = slurp_top( $filename, 400 + length $tex_closed_license );
-
-    if ( ( index ${$text}, $tex_closed_license ) < 0 ) {
-        my $problem = "No license language in $filename (TeX style)\n";
-        if ($verbose) {
-            $problem
-                .= "=== Differences ===\n"
-                . Text::Diff::diff( $text, \$tex_closed_license )
-                . ( q{=} x 30 );
-        } ## end if ($verbose)
-        push @problems, $problem;
-    } ## end if ( ( index ${$text}, $tex_closed_license ) < 0 )
-    if ( scalar @problems and $verbose >= 2 ) {
-        my $problem =
-              "=== license for $filename should be as follows:\n"
-            . $tex_closed_license
-            . ( q{=} x 30 );
-        push @problems, $problem;
-    } ## end if ( scalar @problems and $verbose >= 2 )
-    return @problems;
-} ## end sub tex_closed
-
 sub tex_cc_a_nd {
     my ( $filename, $verbose ) = @_;
     my @problems = ();
-    my $text = slurp( $filename );
+    my $text     = slurp($filename);
 
 # say "=== Looking for\n", $tex_cc_a_nd_license, "===";
 # say "=== Looking in\n", ${$text}, "===";
@@ -635,24 +600,24 @@ sub tex_cc_a_nd {
     if ( ( index ${$text}, $tex_cc_a_nd_license ) != 0 ) {
         my $problem = "No CC-A-ND language in $filename (TeX style)\n";
         push @problems, $problem;
-    } ## end if ( ( index ${$text}, $tex_cc_a_nd_license ) != 0 )
+    }
     if ( ( index ${$text}, $cc_a_nd_thanks ) < 0 ) {
         my $problem = "No CC-A-ND LaTeX thanks in $filename\n";
         push @problems, $problem;
-    } ## end if ( ( index ${$text}, $tex_cc_a_nd_license ) != 0 )
+    }
     if ( ( index ${$text}, $copyright_line_in_tex ) < 0 ) {
         my $problem = "No copyright line in $filename\n";
         push @problems, $problem;
-    } ## end if ( ( index ${$text}, $tex_cc_a_nd_license ) != 0 )
+    }
     if ( scalar @problems and $verbose >= 2 ) {
         my $problem =
               "=== license for $filename should be as follows:\n"
-            . $tex_closed_license
+            . $tex_cc_a_nd_license
             . ( q{=} x 30 );
         push @problems, $problem;
     } ## end if ( scalar @problems and $verbose >= 2 )
     return @problems;
-} ## end sub tex_closed
+} ## end sub tex_cc_a_nd
 
 sub cc_a_nd {
     my ( $filename, $verbose ) = @_;

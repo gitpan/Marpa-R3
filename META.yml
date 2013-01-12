@@ -5,17 +5,18 @@ author:
 build_requires:
   ExtUtils::CBuilder: 0
 configure_requires:
+  CPAN::Meta::Converter: 2.120921
   Carp: 1.08
   Config::AutoConf: 0.22
   Data::Dumper: 2.125
   ExtUtils::CBuilder: 0.27
   ExtUtils::MakeMaker: 0
   List::Util: 1.21
-  Module::Build: 0.3601
+  Module::Build: 0.4003
   Scalar::Util: 1.21
   Test::More: 0.94
 dynamic_config: 1
-generated_by: 'Module::Build version 0.4002, CPAN::Meta::Converter version 2.112621'
+generated_by: 'Module::Build version 0.4003, CPAN::Meta::Converter version 2.120921'
 license: unknown
 meta-spec:
   url: http://module-build.sourceforge.net/META-spec-v1.4.html
@@ -55,16 +56,16 @@ no_index:
 provides:
   Marpa::R3:
     file: lib/Marpa/R3.pm
-    version: 3.001_000
+    version: 3.001_001
   Marpa::R3::Grammar:
     file: lib/Marpa/R3/Grammar.pm
-    version: 3.001_000
+    version: 3.001_001
   Marpa::R3::HTML:
     file: html/lib/Marpa/R3/HTML.pm
-    version: 3.001_000
+    version: 3.001_001
   Marpa::R3::HTML::Callback:
     file: html/lib/Marpa/R3/HTML/Callback.pm
-    version: 3.001_000
+    version: 3.001_001
   Marpa::R3::HTML::Config:
     file: html/lib/Marpa/R3/HTML/Config.pm
     version: 0
@@ -94,7 +95,7 @@ provides:
     version: 0
   Marpa::R3::Internal:
     file: lib/Marpa/R3/Internal.pm
-    version: 3.001_000
+    version: 3.001_001
   Marpa::R3::Internal::Grammar:
     file: lib/Marpa/R3/Grammar.pm
     version: 0
@@ -115,19 +116,19 @@ provides:
     version: 0
   Marpa::R3::Recognizer:
     file: lib/Marpa/R3/Recognizer.pm
-    version: 3.001_000
+    version: 3.001_001
   Marpa::R3::Scanless:
     file: lib/Marpa/R3/Scanless.pm
-    version: 3.001_000
+    version: 3.001_001
   Marpa::R3::Stuifzand:
     file: lib/Marpa/R3/Stuifzand.pm
-    version: 3.001_000
+    version: 3.001_001
   Marpa::R3::Thin::Trace:
     file: lib/Marpa/R3/Thin/Trace.pm
-    version: 3.001_000
+    version: 3.001_001
   Marpa::R3::Value:
     file: lib/Marpa/R3/Value.pm
-    version: 3.001_000
+    version: 3.001_001
 recommends:
   Config::AutoConf: 0.22
   ExtUtils::MakeMaker: 0
@@ -141,4 +142,4 @@ requires:
   Scalar::Util: 1.21
 resources:
   repository: git://github.com/jeffreykegler/Marpa-R3.git
-version: 3.001_000
+version: 3.001_001
