@@ -1,5 +1,5 @@
 #!perl
-# Copyright 2013 Jeffrey Kegler
+# Copyright 2014 Jeffrey Kegler
 # This file is part of Marpa::R3.  Marpa::R3 is free software: you can
 # redistribute it and/or modify it under the terms of the GNU Lesser
 # General Public License as published by the Free Software Foundation,
@@ -20,13 +20,18 @@ use 5.010;
 use strict;
 use warnings;
 
-use Test::More tests => 6;
+use Test::More tests => 7;
+my $builder = Test::More->builder;
+binmode $builder->output,         ":utf8";
+binmode $builder->failure_output, ":utf8";
+binmode $builder->todo_output,    ":utf8";
 use English qw( -no_match_vars );
 use lib 'inc';
 use Marpa::R3::Test;
 use Marpa::R3;
 
 my $rules = <<'END_OF_GRAMMAR';
+:default ::= action => do_arg0
 :start ::= script
 script ::= expression
 script ::= (script ';') expression
@@ -35,6 +40,7 @@ expression ::=
      NUM
    | VAR action => do_is_var
    | ('(') expression (')') assoc => group
+   | ([\x{300C}]) expression ([\x{300D}]) assoc => group
   || '-' expression action => do_negate
   || expression '^' expression action => do_caret assoc => right
   || expression '*' expression action => do_star
@@ -61,8 +67,7 @@ whitespace ~ [\s]+
 END_OF_GRAMMAR
 
 my $grammar = Marpa::R3::Scanless::G->new(
-    {   action_object  => 'My_Actions',
-        default_action => 'do_arg0',
+    {   
         source          => \$rules,
     }
 );
@@ -99,7 +104,6 @@ sub calculate {
 
     my $self = bless { grammar => $grammar }, 'My_Actions';
     $self->{slr} = $recce;
-    local $My_Actions::SELF = $self;
 
     if ( not defined eval { $recce->read($p_string); 1 } ) {
 
@@ -108,7 +112,7 @@ sub calculate {
         chomp $eval_error;
         die $self->show_last_expression(), "\n", $eval_error, "\n";
     } ## end if ( not defined eval { $event_count = $recce->read...})
-    my $value_ref = $recce->value;
+    my $value_ref = $recce->value( $self );
     if ( not defined $value_ref ) {
         die $self->show_last_expression(), "\n",
             "No parse was found, after reading the entire input\n";
@@ -140,6 +144,10 @@ my @tests_data = (
     [ "+ reduce 1 + 2, 3,4*2 , 5"          => 'Parse: 19' ]
 );
 
+my $unicoded_string = "4 * 3 / (a = b = 5) + 42 - 1";
+$unicoded_string =~ tr/() /\x{300C}\x{300D}\x{2028}/;
+push @tests_data, [ $unicoded_string, qq{Parse: 43.4\n"a" = "5"\n"b" = "5"} ];
+
 TEST:
 for my $test_data (@tests_data) {
     my ($test_string,     $expected_value) = @{$test_data};
@@ -149,8 +157,6 @@ for my $test_data (@tests_data) {
 } ## end TEST: for my $test_string (@test_strings)
 
 package My_Actions;
-our $SELF;
-sub new { return $SELF }
 
 sub do_is_var {
     my ( undef, $var ) = @_;

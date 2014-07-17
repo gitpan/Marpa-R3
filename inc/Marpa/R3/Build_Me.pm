@@ -1,4 +1,4 @@
-# Copyright 2013 Jeffrey Kegler
+# Copyright 2014 Jeffrey Kegler
 # This file is part of Marpa::R3.  Marpa::R3 is free software: you can
 # redistribute it and/or modify it under the terms of the GNU Lesser
 # General Public License as published by the Free Software Foundation,
@@ -35,7 +35,7 @@ use Marpa::R3::Config;
 
 BEGIN {
     if ($Marpa::R3::USE_PERL_AUTOCONF) {
-	say "Using Config::AutoConf";
+        say "Using Config::AutoConf";
         for my $package (qw( ExtUtils::MakeMaker Config::AutoConf ))
         {
             if ( not eval "require $package" ) {
@@ -119,7 +119,7 @@ sub perl_version_contents {
     return $text;
 } ## end sub perl_version_contents
 
-sub write_file {
+sub file_write {
     my ( $self, $contents, @name_components ) = @_;
     my $base_dir  = $self->base_dir();
     my $file_name = pop @name_components;
@@ -130,7 +130,16 @@ sub write_file {
     print {$fh} $contents or die "print failed: $ERRNO";
     close $fh;
     return 1;
-} ## end sub write_file
+} ## end sub file_write
+
+sub file_slurp {
+    my ( $self, @name_components ) = @_;
+    my $path_name = File::Spec->catfile( @name_components );
+    open my $fh, q{<}, $path_name;
+    my $contents = do { local $RS = undef; <$fh> };
+    close $fh;
+    return $contents;
+}
 
 # This is based on _infer_xs_spec() from Module::Build.  It was
 # copied here in order to be customized
@@ -173,31 +182,17 @@ sub marpa_infer_xs_spec {
     return \%spec;
 } ## end sub marpa_infer_xs_spec
 
-sub gcc_version {
-    my $version;
-    my $cc = $Config{cc};
-    return if $cc ne 'gcc';
-    return if not IPC::Cmd->can_capture_buffer;
-    return
-        if not IPC::Cmd::run(
-                command => [ $cc, '-dumpversion' ],
-                buffer  => \$version,
-        );
-	chomp $version;
-    my @current = ($version =~ m/ \A (\d+) [.] (\d+) [.] (\d+) \z /xms);
-    return if not scalar @current == 3;
-    return \@current;
-} ## end sub gcc_version
-
 sub gcc_is_at_least {
     my ($required) = @_;
-    state $gcc_version = gcc_version();
+    state $gcc_version = $Config{gccversion};
     return if not $gcc_version;
+    my @actual = ($gcc_version =~ m/ \A (\d+) [.] (\d+) [.] (\d+) \z /xms);
+    return if @actual != 3;
     my @required = ($required =~ m/ \A (\d+) [.] (\d+) [.] (\d+) \z /xms);
-    return if scalar @required != 3;
-    my $cmp = $gcc_version->[0] <=> $required[0] ||
-     $gcc_version->[1] <=> $required[1]  ||
-     $gcc_version->[2] <=> $required[2] ;
+    die if scalar @required != 3;
+    my $cmp = $actual[0] <=> $required[0] ||
+     $actual[1] <=> $required[1]  ||
+     $actual[2] <=> $required[2] ;
     return $cmp >= 0 ? 1 : 0;
 }
 
@@ -234,13 +229,13 @@ sub process_xs {
     $self->add_to_cleanup( $spec->{c_file} );
 
     my @libmarpa_build_dir = File::Spec->splitdir( $self->base_dir );
-    push @libmarpa_build_dir, 'libmarpa_build';
+    push @libmarpa_build_dir, 'libmarpa_build' ;
     my $libmarpa_build_dir = File::Spec->catdir(@libmarpa_build_dir);
 
     my @xs_dependencies = ( 'typemap', 'Build', $xs_file, $dest_gp_xsh );
     push @xs_dependencies,
         map { File::Spec->catfile( @libmarpa_build_dir, $_ ) }
-        qw(config.h marpa.h codes.h codes.c );
+        qw(config.h marpa.h marpa_slif.h marpa_codes.c );
 
     if ( not $self->up_to_date( \@xs_dependencies, $spec->{c_file} ) ) {
         $self->verbose() and say "compiling $xs_file";
@@ -250,14 +245,28 @@ sub process_xs {
     # .c -> .o
     my $v = $self->dist_version;
     $self->verbose() and say "compiling $spec->{c_file}";
-    my @new_ccflags = ( '-I', $libmarpa_build_dir );
-    if ( $self->config('cc') eq 'gcc' ) {
-	## -W instead of -Wextra is case the GCC is pre 3.0.0
-        push @new_ccflags, qw( -Wall -Wno-unused-variable -W
-	    -Wpointer-arith -Wstrict-prototypes -Wwrite-strings
-            -Winline -Wmissing-declarations );
-	push @new_ccflags, '-Wdeclaration-after-statement' if gcc_is_at_least('3.4.6');
+    my @new_ccflags = ( '-I', $libmarpa_build_dir, '-I', 'xs' );
+
+    if ( $self->config('ccname') eq 'gcc' ) {
+        ## -W instead of -Wextra is case the GCC is pre 3.0.0
+        ## -Winline omitted because too noisy
+        push @new_ccflags, qw( -Wall -W -ansi
+            -Wpointer-arith -Wstrict-prototypes -Wwrite-strings
+            -Wmissing-declarations );
+        push @new_ccflags, '-Wdeclaration-after-statement' if gcc_is_at_least('3.4.6');
     } ## end if ( $self->config('cc') eq 'gcc' )
+    if ( defined $self->args('XS-debug') ) {
+        say 'XS-debug flag is on';
+        if ( $self->config('ccname') eq 'gcc' ) {
+            push @new_ccflags, qw( -Wall -ansi -pedantic -Wundef -Wendif-labels );
+        } ## end if ( $self->config('cc') eq 'gcc' )
+        elsif ( $self->config('ccname') eq 'cl' ){
+            ## gcc's -Wundef is msvc's C4668 that is on with -Wall
+            ## gcc's -ansi -pedantic is msvc's /Za, but windows.h can't be compiled with it
+            ## msvc's equivalent for gcc's -Wendif-labels can't be found :)
+            push @new_ccflags, qw( -W4 -Wp64 );
+        } ## end elsif ( $self->config('ccname') eq 'cl' ){
+    }
     my $ccflags = $self->config('ccflags');
     $self->config( ccflags => ( $ccflags . q{ } . join q{ }, @new_ccflags ) );
     $self->compile_c( $spec->{c_file},
@@ -268,14 +277,77 @@ sub process_xs {
     File::Path::mkpath( $spec->{archdir}, 0, ( oct 777 ) )
         if not -d $spec->{archdir};
 
-    {
-        # finalize libmarpa.a
-        my $libmarpa_libs_dir =
-            File::Spec->catdir( $self->base_dir(), 'libmarpa_build',
-            $Marpa::R3::USE_PERL_AUTOCONF ? ('blib', 'arch', 'auto', 'libmarpa') : '.libs');
-        my $libmarpa_archive = File::Spec->catfile( $libmarpa_libs_dir, $Marpa::R3::USE_PERL_AUTOCONF ? "libmarpa$Config{lib_ext}" : 'libmarpa.a');
+    my @extra_linker_flags = ();
+    my $libmarpa_build_directory =
+        File::Spec->catdir( $self->base_dir(), 'libmarpa_build' );
+
+    my $switched_to_file =
+        File::Spec->catdir( $libmarpa_build_directory, 'SWITCHED_TO' );
+    my $libmarpa_mode_file =
+        File::Spec->catdir( $self->base_dir(), 'core', 'cf', 'LIBMARPA_MODE' );
+    if ( defined $self->args('libmarpa-external') ) {
+        my $libmarpa_external_flags = $self->args('libmarpa-external');
+        push @extra_linker_flags, split q{ }, $libmarpa_external_flags;
+        $self->log_info("Using external Libmarpa\n");
+        if ( -e $switched_to_file ) {
+            $self->log_info("Deleting $switched_to_file\n");
+            File::Path::rmtree( $switched_to_file, 0, 0 );
+            die "Couldn't remove '$switched_to_file': $!\n"
+                if -e $switched_to_file;
+        } ## end if ( -e $switched_to_file )
+        $switched_to_file = undef;
+
+        # Is there a Libmarpa mode file?
+        # If not create it.
+        if ( not -e $libmarpa_mode_file ) {
+            open my $fh, q{>}, $libmarpa_mode_file;
+            print {$fh}
+                "DO NOT EDIT -- automatically generated by $PROGRAM_NAME\n",
+                "Switched to external Libmarpa: "
+                . localtime()->datetime . qq{\n}
+                or die "print failed: $ERRNO";
+            close $fh;
+        }
+    } ## end if ( defined $self->args('libmarpa-external') )
+    else {
+        # Is there a switched to file?
+        # If not create it.
+        $self->log_info("Using built-in Libmarpa\n");
+
+        if ( -e $libmarpa_mode_file ) {
+            $self->log_info("Deleting $libmarpa_mode_file\n");
+            File::Path::rmtree( $libmarpa_mode_file, 0, 0 );
+            die "Couldn't remove '$libmarpa_mode_file': $!\n"
+                if -e $libmarpa_mode_file;
+        } ## end if ( -e $libmarpa_mode_file )
+
+        if ( not -e $switched_to_file ) {
+            open my $fh, q{>}, $switched_to_file;
+            print {$fh}
+                "DO NOT EDIT -- automatically generated by $PROGRAM_NAME\n",
+                "Last switch to built-in Libmarpa: "
+                . localtime()->datetime . qq{\n}
+                or die "print failed: $ERRNO";
+            close $fh;
+        } ## end if ( not -e $switched_to_file )
+
+        my $libmarpa_archive;
+        FIND_LIBRARY: {
+            if ($Marpa::R3::USE_PERL_AUTOCONF) {
+                my $libmarpa_libs_dir =
+                    File::Spec->catdir( $libmarpa_build_directory, 'blib',
+                    'arch', 'auto', 'libmarpa' );
+                $libmarpa_archive = File::Spec->catfile( $libmarpa_libs_dir,
+                    "libmarpa$Config{lib_ext}" );
+                last FIND_LIBRARY;
+            } ## end if ($Marpa::R3::USE_PERL_AUTOCONF)
+            my $libmarpa_libs_dir =
+                File::Spec->catdir( $libmarpa_build_directory, '.libs' );
+            $libmarpa_archive =
+                File::Spec->catfile( $libmarpa_libs_dir, 'libmarpa.a' );
+        } ## end FIND_LIBRARY:
         push @{ $self->{properties}->{objects} }, $libmarpa_archive;
-    }
+    } ## end else [ if ( defined $self->args('libmarpa-external') ) ]
 
     # .xs -> .bs
     $self->add_to_cleanup( $spec->{bs_file} );
@@ -291,30 +363,42 @@ sub process_xs {
     } ## end unless ( $self->up_to_date( $xs_file, $spec->{bs_file} ) )
 
     # .o -> .(a|bundle)
-    return marpa_link_c( $self, $spec );
+    return marpa_link_c( $self, $spec, \@extra_linker_flags, $switched_to_file );
 } ## end sub process_xs
 
 # The following was initially copied from Module::Build, and has
 # been customized for Marpa.
 sub marpa_link_c {
-    my ( $self, $spec ) = @_;
+    my ( $self, $spec, $extra_linker_flags, $switched_to_file ) = @_;
     my $p = $self->{properties};                             # For convenience
 
     $self->add_to_cleanup( $spec->{lib_file} );
 
     my $objects = $p->{objects} || [];
 
-    return $spec->{lib_file}
-        if $self->up_to_date( [ $spec->{obj_file}, @{$objects} ],
-        $spec->{lib_file} );
+    my @dependencies = ($spec->{obj_file});
+    push @dependencies, @{$objects};
+    push @dependencies, $switched_to_file if defined $switched_to_file;
+    # Always relink if libmarpa-external is specified
+    if (
+    not  defined $self->args('libmarpa-external') and
+    $self->up_to_date( \@dependencies,
+            $spec->{lib_file}
+        )
+        )
+    {
+        return $spec->{lib_file};
+    } ## end if ( $self->up_to_date( [ $spec->{obj_file}, @{$objects...}]))
 
     my $module_name = $spec->{module_name} || $self->module_name;
 
+    my @extra_linker_flags = @{$p->{extra_linker_flags}};
+    push @extra_linker_flags, @{$extra_linker_flags};
     $self->cbuilder->link(
         module_name        => $module_name,
         objects            => [ $spec->{obj_file}, @{$objects} ],
         lib_file           => $spec->{lib_file},
-        extra_linker_flags => $p->{extra_linker_flags}
+        extra_linker_flags => \@extra_linker_flags
     );
 
     return $spec->{lib_file};
@@ -325,22 +409,23 @@ sub do_libmarpa {
     my $cwd      = $self->cwd();
     my $base_dir = $self->base_dir();
 
-    my $dist_dir = File::Spec->catdir( $base_dir, 'libmarpa_dist' );
-    my $build_dir = File::Spec->catdir( $base_dir, 'libmarpa_build' );
+    my $dist_dir = File::Spec->catdir( $base_dir, 'core/read_only' );
+    my $build_dir = File::Spec->catdir( $base_dir, 'libmarpa_build');
 
     my $build_stamp_file = File::Spec->catfile( $build_dir, 'stamp-h1' );
+    my $build_makefile = File::Spec->catfile( $build_dir, 'Makefile' );
     my $dist_stamp_file = File::Spec->catfile( $dist_dir, 'stamp-h1' );
 
     # If build directory exists and contains a stamp file more recent than the
     # tar file, we are done.
-    return if  $self->up_to_date( [$dist_stamp_file], $build_stamp_file ) ;
+    return if  $self->up_to_date( [$dist_stamp_file], [$build_stamp_file, $build_makefile] ) ;
 
     # Otherwise, rebuild from scratch
     File::Path::rmtree($build_dir);
 
     if ( $self->verbose() ) {
-        	say join q{ }, "Copying files from $dist_dir to $build_dir"
-            	or die "print failed: $ERRNO";
+                say join q{ }, "Copying files from $dist_dir to $build_dir"
+                or die "print failed: $ERRNO";
     }
 
      ## Make sure build dir structure exists, even if empty
@@ -353,24 +438,24 @@ sub do_libmarpa {
     {
         my $from_m4_dir = File::Spec->catdir( $dist_dir, 'm4' );
         my $to_m4_dir = File::Spec->catdir( $build_dir, 'm4' );
-	chdir $from_m4_dir;
-	for my $file (<*>) {
-	  my $from_file = File::Spec->catfile($from_m4_dir, $file);
-	  my $to_file = File::Spec->catfile($to_m4_dir, $file);
-	  push @copy_work_list, [$from_file, $to_file];
-	}
-	chdir $cwd;
+        chdir $from_m4_dir;
+        for my $file (<*>) {
+          my $from_file = File::Spec->catfile($from_m4_dir, $file);
+          my $to_file = File::Spec->catfile($to_m4_dir, $file);
+          push @copy_work_list, [$from_file, $to_file];
+        }
+        chdir $cwd;
     }
     {
-	chdir $dist_dir;
-	FILE: for my $file (<*>) {
-	  next FILE if -d $file;
-	  next FILE if $file eq 'stamp-h1';
-	  my $from_file = File::Spec->catfile($dist_dir, $file);
-	  my $to_file = File::Spec->catfile($build_dir, $file);
-	  push @copy_work_list, [$from_file, $to_file];
-	}
-	chdir $cwd;
+        chdir $dist_dir;
+        FILE: for my $file (<*>) {
+          next FILE if -d $file;
+          next FILE if $file eq 'stamp-h1';
+          my $from_file = File::Spec->catfile($dist_dir, $file);
+          my $to_file = File::Spec->catfile($build_dir, $file);
+          push @copy_work_list, [$from_file, $to_file];
+        }
+        chdir $cwd;
     }
     for my $file (@copy_work_list) {
         File::Copy::copy(@{$file});
@@ -380,113 +465,116 @@ sub do_libmarpa {
 
     if (! $Marpa::R3::USE_PERL_AUTOCONF) {
 
-	    # This is only necessary for GNU autoconf, which is aggressive
-	    # about looking for things to update
+            # This is only necessary for GNU autoconf, which is aggressive
+            # about looking for things to update
 
-	    # Some files should NEVER be updated in this directory, by
-	    # make or anything else.  If for some reason they are
-	    # out of date, stamp them up to date
+            # Some files should NEVER be updated in this directory, by
+            # make or anything else.  If for some reason they are
+            # out of date, stamp them up to date
 
-	    my @m4_files         = glob('m4/*.m4');
-	    my $configure_script = 'configure';
-	
-	    if (not $self->up_to_date( [ 'configure.ac', @m4_files ], 'aclocal.m4' ) )
-	    {
-	        utime time(), time(), 'aclocal.m4';
-	    }
-	    if (not $self->up_to_date(
-	            [ 'configure.ac', 'Makefile.am', 'aclocal.m4' ],
-	            'Makefile.in'
-	        )
-	        )
-	    {
-	        utime time(), time(), 'Makefile.in';
-	    } ## end if ( not $self->up_to_date( [ 'configure.ac', 'Makefile.am'...]))
-	    if (not $self->up_to_date(
-	            [ 'configure.ac',    'aclocal.m4' ],
-	            [ $configure_script, 'config.h.in' ]
-	        )
-	        )
-	    {
-	        utime time(), time(), $configure_script;
-	        utime time(), time(), 'config.h.in';
-	    } ## end if ( not $self->up_to_date( [ 'configure.ac', 'aclocal.m4'...]))
-	
-	    if ( $self->verbose() ) {
-	        print "Configuring libmarpa\n"
-	            or die "print failed: $ERRNO";
-	    }
-	    my $shell = $Config{sh};
-	
-	##no critic(ValuesAndExpressions::RequireInterpolationOfMetachars)
-	    $shell or die q{No Bourne shell available says $Config{sh}};
-	##use critic
+            my @m4_files         = glob('m4/*.m4');
+            my $configure_script = 'configure';
+        
+            if (not $self->up_to_date( [ 'configure.ac', @m4_files ], 'aclocal.m4' ) )
+            {
+                utime time(), time(), 'aclocal.m4';
+            }
+            if (not $self->up_to_date(
+                    [ 'configure.ac', 'Makefile.am', 'aclocal.m4' ],
+                    'Makefile.in'
+                )
+                )
+            {
+                utime time(), time(), 'Makefile.in';
+            } ## end if ( not $self->up_to_date( [ 'configure.ac', 'Makefile.am'...]))
+            if (not $self->up_to_date(
+                    [ 'configure.ac',    'aclocal.m4' ],
+                    [ $configure_script, 'config.h.in' ]
+                )
+                )
+            {
+                utime time(), time(), $configure_script;
+                utime time(), time(), 'config.h.in';
+            } ## end if ( not $self->up_to_date( [ 'configure.ac', 'aclocal.m4'...]))
+        
+            if ( $self->verbose() ) {
+                print "Configuring libmarpa\n"
+                    or die "print failed: $ERRNO";
+            }
+            my $shell = $Config{sh};
+        
+        ##no critic(ValuesAndExpressions::RequireInterpolationOfMetachars)
+            $shell or die q{No Bourne shell available says $Config{sh}};
+        ##use critic
     }
     
     my $original_cflags = $ENV{CFLAGS};
     local $ENV{CFLAGS};
     $ENV{CFLAGS} = $original_cflags if defined $original_cflags;
 
-    my @configure_command_args = ('--disable-static');
+    # We need PIC, but do not want the overhead of building the shared library
+    my @configure_command_args = ();
+    push @configure_command_args, qw(--with-pic --disable-shared);
+
     my @debug_flags = ();
     if ( defined $self->args('Marpa-debug') ) {
         if ( defined $ENV{LIBMARPA_CFLAGS} ) {
             $ENV{CFLAGS} = $ENV{LIBMARPA_CFLAGS};
         }
-        push @debug_flags, '-DMARPA_DEBUG';
+        push @debug_flags, '-DMARPA_DEBUG=1';
         push @debug_flags, '-fno-inline', '-Wno-inline' if ($self->config('cc') eq 'gcc');
-        push @debug_flags, '-DMARPA_OBSTACK_DEBUG';
         push @configure_command_args,
             'MARPA_DEBUG_FLAG=' . ( join q{ }, @debug_flags );
     } ## end if ( defined $self->args('Marpa-debug') )
-	
+        
+    # As of this writing, only used by Config::AutoConf logic,
+    # but that may change.
+    my $libmarpa_version = $self->file_slurp('LIB_VERSION');
+    chomp $libmarpa_version;
+    my @libmarpa_version = split /[.]/xms, $libmarpa_version;
+
     if ($Marpa::R3::USE_PERL_AUTOCONF) {
 
-	open my $libmarpa_version_fh, '<', 'VERSION';
-	my $libmarpa_version = <$libmarpa_version_fh>;
-	close $libmarpa_version_fh;
-	chomp $libmarpa_version;
-	my @libmarpa_version = split /[.]/xms, $libmarpa_version;
-
-	#
-	## C.f. http://fr.slideshare.net/hashashin/building-c-and-c-libraries-with-perl
-	#
-	my @c = qw/marpa.c marpa_obs.c avl.c/;
-	if (! -r 'config.h') {
-	    #
-	    ## Because Config::AutoConf can only generate #define/#undef
-	    ## stubs, we write our config.h with these stubs, our config.h
-	    ## will then include a generated config_from_autoconf.h
-	    #
-	    if ( $self->verbose() ) {
-		say join q{ }, "Doing config.h"
-	            or die "print failed: $ERRNO";
-	    }
-	    open(CONFIG_H, '>>', 'config.h') || die "Cannot open config.h, $!\n";
-	    my $ac = Config::AutoConf->new();
-	    my $inline_ok = 0;
-	    {
-		$ac->msg_checking('inline');
-		my $program = $ac->lang_build_program("static inline int testinline() {return 1;}\n", 'testinline');
-		$inline_ok = $ac->compile_if_else($program);
-		$ac->msg_result($inline_ok ? 'yes' : 'no');
-	    }
-	    my $inline = '';
-	    if (! $inline_ok) {
-		foreach (qw/__inline__ __inline/) {
-		    my $candidate = $_;
-		    $ac->msg_checking($candidate);
-		    my $program = $ac->lang_build_program("static $candidate int testinline() {return 1;}\n", 'testinline');
-		    my $rc = $ac->compile_if_else($program);
-		    $ac->msg_result($rc ? 'yes' : 'no');
-		    if ($rc) {
-			$inline = $candidate;
-			last;
-		    }
-		}
-	    }
-	    if ($inline) {
-		print CONFIG_H <<INLINEHOOK;
+        #
+        ## C.f. http://fr.slideshare.net/hashashin/building-c-and-c-libraries-with-perl
+        #
+        my @c = qw/marpa_ami.c marpa_avl.c marpa.c
+            marpa_codes.c marpa_obs.c marpa_slif.c marpa_tavl.c/;
+        if (! -r 'config.h') {
+            #
+            ## Because Config::AutoConf can only generate #define/#undef
+            ## stubs, we write our config.h with these stubs, our config.h
+            ## will then include a generated config_from_autoconf.h
+            #
+            if ( $self->verbose() ) {
+                say join q{ }, "Doing config.h"
+                    or die "print failed: $ERRNO";
+            }
+            open my $config_fh, '>>', 'config.h' || die "Cannot open config.h, $!\n";
+            my $ac = Config::AutoConf->new();
+            my $inline_ok = 0;
+            {
+                $ac->msg_checking('inline');
+                my $program = $ac->lang_build_program("static inline int testinline() {return 1;}\n", 'testinline');
+                $inline_ok = $ac->compile_if_else($program);
+                $ac->msg_result($inline_ok ? 'yes' : 'no');
+            }
+            my $inline = '';
+            if (! $inline_ok) {
+                foreach (qw/__inline__ __inline/) {
+                    my $candidate = $_;
+                    $ac->msg_checking($candidate);
+                    my $program = $ac->lang_build_program("static $candidate int testinline() {return 1;}\n", 'testinline');
+                    my $rc = $ac->compile_if_else($program);
+                    $ac->msg_result($rc ? 'yes' : 'no');
+                    if ($rc) {
+                        $inline = $candidate;
+                        last;
+                    }
+                }
+            }
+            if ($inline) {
+                print {$config_fh} <<INLINEHOOK;
 #ifndef __CONFIG_WITH_STUBS_H
 #ifndef __cplusplus
 #define inline $inline
@@ -494,8 +582,8 @@ sub do_libmarpa {
 #include "config_from_autoconf.h"
 #endif /* __CONFIG_WITH_STUBS_H */
 INLINEHOOK
-	    } else {
-		print CONFIG_H <<INLINEHOOK;
+            } else {
+                print {$config_fh} <<INLINEHOOK;
 #ifndef __CONFIG_WITH_STUBS_H
 #ifndef __cplusplus
 /* #undef inline */
@@ -503,95 +591,86 @@ INLINEHOOK
 #include "config_from_autoconf.h"
 #endif /* __CONFIG_WITH_STUBS_H */
 INLINEHOOK
-	    }
-	    close(CONFIG_H);
-	    $ac = Config::AutoConf->new();
-	    $ac->check_stdc_headers;
-	    $ac->check_default_headers();
-	    $ac->check_type('unsigned long long int');
-	    if ($ac->cache_val($ac->_cache_name('unsigned long long int'))) {
-		$ac->check_type('intmax_t',  undef, sub {$ac->define_var('intmax_t', 'long long int');},           undef);
-		$ac->check_type('size_t',    undef, sub {$ac->define_var('size_t', 'long long int');},             undef);
-		$ac->check_type('uintmax_t', undef, sub {$ac->define_var('uintmax_t', 'unsigned long long int');}, undef);
-	    } else {
-		$ac->check_type('intmax_t',  undef, sub {$ac->define_var('intmax_t', 'long int');},           undef);
-		$ac->check_type('size_t',    undef, sub {$ac->define_var('size_t', 'long int');},             undef);
-		$ac->check_type('uintmax_t', undef, sub {$ac->define_var('uintmax_t', 'unsigned long int');}, undef);
-	    }
-	    my $memset = $ac->lang_call('', 'memset');
-	    $ac->msg_checking('memset');
-	    my $rc = $ac->compile_if_else($memset);
-	    $ac->define_var('HAVE_MEMSET', $ac->compile_if_else($memset));
-	    $ac->define_var('PACKAGE', "\"libmarpa\"");
-	    $ac->define_var('PACKAGE_BUGREPORT', "\"http://rt.cpan.org/NoAuth/Bugs.html?Dist=Marpa\"");
-	    $ac->define_var('PACKAGE_NAME', "\"libmarpa\"");
-	    $ac->define_var('PACKAGE_STRING', "\"libmarpa $libmarpa_version[0].$libmarpa_version[2].$libmarpa_version[1]\"");
-	    $ac->define_var('PACKAGE_TARNAME', "\"libmarpa\"");
-	    $ac->define_var('PACKAGE_URL', "\"\"");
-	    $ac->define_var('PACKAGE_VERSION', "\"$libmarpa_version\"");
-	    $ac->define_var('PACKAGE_STRING', "\"$libmarpa_version\"");
-	    $ac->msg_result($rc ? 'yes' : 'no');
-	    $ac->write_config_h('config_from_autoconf.h');
-	}
-	if (! -r 'marpa_config.h') {
-	    if ( $self->verbose() ) {
-		say join q{ }, "Doing marpa_config.h"
-	            or die "print failed: $ERRNO";
-	    }
-	    open my $conf_fh, '>', 'marpa_config.h';
-	    print ${conf_fh}  <<MARPA_CONFIG_H;
-#ifndef __MARPA_CONFIG_H__
-#define __MARPA_CONFIG_H__
-	
-#define MARPA_MAJOR_VERSION $libmarpa_version[0]
-#define MARPA_MINOR_VERSION $libmarpa_version[1]
-#define MARPA_MICRO_VERSION $libmarpa_version[2]
-#define MARPA_INTERFACE_AGE 100
-#define MARPA_BINARY_AGE (100 * $libmarpa_version[2] + $libmarpa_version[1])
-#define MARPA_VERSION \"$libmarpa_version\"
-	
-#endif /* __MARPA_CONFIG_H__ */
-MARPA_CONFIG_H
-            close $conf_fh;
-	}
-	my @o = map {s/\.c$/$Config{obj_ext}/; $_} @c;
-	if (! -r 'Makefile.PL') {
-	    open my $makefile_pl_fh, '>', 'Makefile.PL';
-	    my $CCFLAGS = @debug_flags ? "$Config{ccflags} @debug_flags" : '';
-	    print {$makefile_pl_fh} "
+            }
+
+            # Config::Autoconf mistakes 0 for undef, so these must be done explicitly
+            say {$config_fh} join q{ }, '#define MARPA_LIB_MAJOR_VERSION', $libmarpa_version[0];
+            say {$config_fh} join q{ }, '#define MARPA_LIB_MINOR_VERSION', $libmarpa_version[1];
+            say {$config_fh} join q{ }, '#define MARPA_LIB_MICRO_VERSION', $libmarpa_version[2];
+
+            close($config_fh);
+            $ac = Config::AutoConf->new();
+            my $sizeof_int = $ac->check_sizeof_type('int');
+            if ($sizeof_int < 4) {
+                die "Marpa requires that int be at least 32 bits -- on this system that is not the case";
+            }
+
+            $ac->check_stdc_headers;
+            $ac->check_default_headers();
+
+            # This check was to prepare for Perl's 64-bit pseudo-UTF8 characters inside the SLIF.
+            # It needs to be rethought.
+            #
+            # if (!$ac->check_type('unsigned long long int')) {
+                # die "Marpa requires that unsigned long long int is supported by your compiler";
+            # }
+
+            $ac->define_var('PACKAGE', "\"libmarpa\"");
+            $ac->define_var('PACKAGE_BUGREPORT', "\"http://rt.cpan.org/NoAuth/Bugs.html?Dist=Marpa\"");
+            $ac->define_var('PACKAGE_NAME', "\"libmarpa\"");
+            $ac->define_var('PACKAGE_STRING', "\"libmarpa $libmarpa_version[0].$libmarpa_version[1].$libmarpa_version[2]\"");
+            $ac->define_var('PACKAGE_TARNAME', "\"libmarpa\"");
+            $ac->define_var('PACKAGE_URL', "\"\"");
+            $ac->define_var('PACKAGE_VERSION', "\"$libmarpa_version\"");
+            $ac->define_var('PACKAGE_STRING', "\"$libmarpa_version\"");
+            $ac->write_config_h('config_from_autoconf.h');
+        }
+
+        my @o = map {s/\.c$/$Config{obj_ext}/; $_} @c;
+        if (! -r 'Makefile.PL') {
+            open my $makefile_pl_fh, '>', 'Makefile.PL';
+            my $CCFLAGS = @debug_flags ? "$Config{ccflags} @debug_flags" : '';
+            my $linktype = 'static';
+            my $blib = 'blib';
+            my $name = 'libmarpa';
+            print {$makefile_pl_fh} "
 use ExtUtils::MakeMaker;
 WriteMakefile(VERSION        => \"$libmarpa_version\",
               XS_VERSION     => \"$libmarpa_version\",
-              NAME           => 'libmarpa',
+              NAME           => \"$name\",
               OBJECT         => '@o',
               CCFLAGS        => '$CCFLAGS',
-              LINKTYPE       => 'static');
+              INST_LIB       => \"./$blib/lib\",
+              INST_ARCHLIB   => \"./$blib/arch\",
+              INST_SCRIPT    => \"./$blib/script\",
+              INST_BIN       => \"./$blib/bin\",
+              LINKTYPE       => $linktype);
 ";
-	    close $makefile_pl_fh;
-	    die 'Making Makefile: perl Failure'
-	        if not IPC::Cmd::run( command => [$^X, 'Makefile.PL'], verbose => 1 );
-	}
+            close $makefile_pl_fh;
+            die 'Making Makefile: perl Failure'
+                if not IPC::Cmd::run( command => [$^X, 'Makefile.PL'], verbose => 1 );
+        }
     } else {
-	    my $shell = $Config{sh};
-	    my $configure_script = 'configure';
-	    if ( $self->verbose() ) {
-	        say join q{ }, "Running command:", $shell, $configure_script,
-	            @configure_command_args
-	            or die "print failed: $ERRNO";
-	    }
-	    if (not IPC::Cmd::run(
-	            command => [ $shell, $configure_script, @configure_command_args ],
-	            verbose => 1
-	        )
-	        )
-	    {
-	        say {*STDERR} "Failed: $configure_script"
-	            or die "say failed: $ERRNO";
-	        say {*STDERR} "Current directory: $build_dir"
-	            or die "say failed: $ERRNO";
-	        die 'Cannot run libmarpa configure';
-	    } ## end if ( not IPC::Cmd::run( command => [ $shell, $configure_script...]))
-	
+            my $shell = $Config{sh};
+            my $configure_script = 'configure';
+            if ( $self->verbose() ) {
+                say join q{ }, "Running command:", $shell, $configure_script,
+                    @configure_command_args
+                    or die "print failed: $ERRNO";
+            }
+            if (not IPC::Cmd::run(
+                    command => [ $shell, $configure_script, @configure_command_args ],
+                    verbose => 1
+                )
+                )
+            {
+                say {*STDERR} "Failed: $configure_script"
+                    or die "say failed: $ERRNO";
+                say {*STDERR} "Current directory: $build_dir"
+                    or die "say failed: $ERRNO";
+                die 'Cannot run libmarpa configure';
+            } ## end if ( not IPC::Cmd::run( command => [ $shell, $configure_script...]))
+        
     }
     if ( $self->verbose() ) {
         print "Making libmarpa: Start\n" or die "Cannot print: $ERRNO";
@@ -603,11 +682,12 @@ WriteMakefile(VERSION        => \"$libmarpa_version\",
     ## I need to dummy one up, so do it for both
     {
         open my $time_stamp_fh, q{>}, 'stamp-h1';
-	say {$time_stamp_fh} scalar localtime();
-	close $time_stamp_fh;
+        say {$time_stamp_fh} scalar localtime();
+        close $time_stamp_fh;
     }
 
     chdir $cwd;
+
     return 1;
 
 } ## end sub do_libmarpa
@@ -640,11 +720,77 @@ sub ACTION_licensecheck {
     }
 } ## end sub ACTION_licensecheck
 
+sub ACTION_metacheck {
+    my $self = shift;
+
+    # does not check CPAN::Meta
+    # version -- assumes updated with Module::Build
+    # this should only be run when making distributions 
+    # not on install, so we don't have to be too paranoid
+    require CPAN::Meta;
+
+    my $marpa_version = $self->dist_version();
+    my $meta = CPAN::Meta->load_file($self->metafile());
+    my $provides = $meta->{provides};
+    my @metacheck_problems = ();
+    PROVIDED: for my $provided_name (keys %{$provides}) {
+      my $provided_version = $provides->{$provided_name}->{version};
+      if (not defined $provided_version) {
+          push @metacheck_problems, "No version for $provided_name\n";
+          next PROVIDED;
+      }
+      if ($provided_version ne $marpa_version) {
+          push @metacheck_problems,
+          "Version of $provided_name is $provided_version, but Marpa version is $marpa_version\n";
+      }
+    }
+    if (@metacheck_problems) {
+        print {*STDERR} join q{}, @metacheck_problems
+            or die "Cannot print: $ERRNO";
+        die 'Fatal error due to META file issues';
+    }
+}
+
 sub ACTION_distcheck {
     my $self = shift;
     $self->ACTION_licensecheck();
+    $self->ACTION_metacheck();
     return $self->SUPER::ACTION_distcheck;
-}
+} ## end sub ACTION_distcheck
+
+sub ACTION_distmeta {
+    my $self         = shift;
+    my $return_value = $self->SUPER::ACTION_distmeta;
+
+    # does not check CPAN::Meta
+    # version -- assumes updated with Module::Build
+    # this should only be run when making distributions
+    # not on install, so we don't have to be too paranoid
+    require CPAN::Meta;
+
+    my $meta   = CPAN::Meta->load_file( $self->metafile() );
+    my @delete = ('DynaLoader');
+    for my $provided ( keys %{ $meta->{provides} } ) {
+        push @delete, $provided if $provided =~ m/\AMarpa::R3::Inner::/xms;
+        push @delete, $provided if $provided =~ m/\AMarpa::R3::Internal::/xms;
+        push @delete, $provided if $provided =~ m/\AMarpa::R3::HTML::Internal::/xms;
+        push @delete, $provided if $provided =~ m/::Internal\z/xms;
+    }
+    if (@delete) {
+        for my $deletion (@delete) {
+            delete $meta->{provides}->{$deletion};
+        }
+        if (defined $meta->{dynamic_config}) {
+          # Make sure this stays numeric
+          $meta->{dynamic_config} = $meta->{dynamic_config}+0;
+        }
+        $meta->save( 'META.yml', { version => '1.4' } );
+        $meta->save('META.json');
+        $self->log_info("Revised META.yml and META.json\n");
+    } ## end if (@delete)
+
+    return $return_value;
+} ## end sub ACTION_distmeta
 
 sub ACTION_dist {
     my $self = shift;
@@ -667,7 +813,7 @@ sub write_installed_pm {
     my $contents = installed_contents( $self, join q{::}, @package_components,
         $filename );
     $filename .= q{.pm};
-    return $self->write_file( $contents, @components, $filename );
+    return $self->file_write( $contents, @components, $filename );
 } ## end sub write_installed_pm
 
 sub ACTION_code {
@@ -694,11 +840,29 @@ sub ACTION_code {
         my $perl_version_pm =
             perl_version_contents( $self, 'Marpa::R3::Perl' );
         my $version_pm = xs_version_contents( $self, 'Marpa::R3' );
-        $self->write_file( $version_pm, qw(lib Marpa R3 Version.pm) );
-        $self->write_file( $perl_version_pm,
+        $self->file_write( $version_pm, qw(lib Marpa R3 Version.pm) );
+        $self->file_write( $perl_version_pm,
             qw(pperl Marpa R3 Perl Version.pm) );
     } ## end if ( not $self->up_to_date( [ $config_pm_filename, ...]))
-    $self->do_libmarpa();
+
+    # If it's a shared library, we don't build it here.
+    if ( not defined $self->args('libmarpa-external') ) {
+
+        # If the mode file exists, any switch to the internal Libmarpa
+        # must be made explicitly
+        if ( not defined $self->args('libmarpa-internal') ) {
+            my $libmarpa_mode_file =
+                File::Spec->catdir( $self->base_dir(), 'core', 'cf',
+                'LIBMARPA_MODE' );
+            die
+                "Libmarpa is external, but you did not explicity specify that -- you need to\n",
+                '  If you want to go back to the built-in Libmarpa, ',
+                qq{use Build's "--libmarpa-internal=on" flag\n}
+                if -e $libmarpa_mode_file;
+        } ## end if ( not defined $self->args('libmarpa-internal') )
+        $self->do_libmarpa();
+    } ## end if ( not defined $self->args('libmarpa-external') )
+
     return $self->SUPER::ACTION_code;
 } ## end sub ACTION_code
 
@@ -719,4 +883,14 @@ sub ACTION_test {
     return $self->SUPER::ACTION_test;
 }
 
+sub ACTION_install {
+    my $self = shift;
+    die qq{"libmarpa-shared" not supported for "install" target\n},
+        qq{  Marpa::R3 supports testing of shared libraries, but is not an installer for them\n}
+        if defined $self->args('libmarpa-shared');
+    return $self->SUPER::ACTION_install;
+}
+
 1;
+
+# vim: expandtab shiftwidth=4:

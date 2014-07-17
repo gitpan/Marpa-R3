@@ -1,4 +1,4 @@
-# Copyright 2013 Jeffrey Kegler
+# Copyright 2014 Jeffrey Kegler
 # This file is part of Marpa::R3.  Marpa::R3 is free software: you can
 # redistribute it and/or modify it under the terms of the GNU Lesser
 # General Public License as published by the Free Software Foundation,
@@ -17,17 +17,118 @@
 
 Marpa::R3::Scanless - Scanless interface
 
+=head1 Synopsis
+
+=for Marpa::R3::Display
+name: SLIF full synopsis
+normalize-whitespace: 1
+
+    use Marpa::R3;
+
+    my $grammar = Marpa::R3::Scanless::G->new(
+        {   bless_package => 'My_Nodes',
+            source        => \(<<'END_OF_SOURCE'),
+    :default ::= action => [values] bless => ::lhs
+    lexeme default = action => [ start, length, value ]
+        bless => ::name latm => 1
+
+    :start ::= Script
+    Script ::= Expression+ separator => comma
+    comma ~ [,]
+    Expression ::=
+        Number bless => primary
+        | '(' Expression ')' bless => paren assoc => group
+       || Expression '**' Expression bless => exponentiate assoc => right
+       || Expression '*' Expression bless => multiply
+        | Expression '/' Expression bless => divide
+       || Expression '+' Expression bless => add
+        | Expression '-' Expression bless => subtract
+
+    Number ~ [\d]+
+    :discard ~ whitespace
+    whitespace ~ [\s]+
+    # allow comments
+    :discard ~ <hash comment>
+    <hash comment> ~ <terminated hash comment> | <unterminated
+       final hash comment>
+    <terminated hash comment> ~ '#' <hash comment body> <vertical space char>
+    <unterminated final hash comment> ~ '#' <hash comment body>
+    <hash comment body> ~ <hash comment char>*
+    <vertical space char> ~ [\x{A}\x{B}\x{C}\x{D}\x{2028}\x{2029}]
+    <hash comment char> ~ [^\x{A}\x{B}\x{C}\x{D}\x{2028}\x{2029}]
+    END_OF_SOURCE
+        }
+    );
+
+
+    my $recce = Marpa::R3::Scanless::R->new( { grammar => $grammar } );
+
+    my $input = '42*2+7/3, 42*(2+7)/3, 2**7-3, 2**(7-3)';
+    $recce->read(\$input);
+    my $value_ref = $recce->value();
+    die "No parse was found\n" if not defined $value_ref;
+
+    # Result will be something like "86.33... 126 125 16"
+    # depending on the floating point precision
+    my $result = ${$value_ref}->doit();
+
+    package My_Nodes;
+
+    sub My_Nodes::primary::doit { return $_[0]->[0]->doit() }
+    sub My_Nodes::Number::doit  { return $_[0]->[2] }
+    sub My_Nodes::paren::doit   { my ($self) = @_; $self->[1]->doit() }
+
+    sub My_Nodes::add::doit {
+        my ($self) = @_;
+        $self->[0]->doit() + $self->[2]->doit();
+    }
+
+    sub My_Nodes::subtract::doit {
+        my ($self) = @_;
+        $self->[0]->doit() - $self->[2]->doit();
+    }
+
+    sub My_Nodes::multiply::doit {
+        my ($self) = @_;
+        $self->[0]->doit() * $self->[2]->doit();
+    }
+
+    sub My_Nodes::divide::doit {
+        my ($self) = @_;
+        $self->[0]->doit() / $self->[2]->doit();
+    }
+
+    sub My_Nodes::exponentiate::doit {
+        my ($self) = @_;
+        $self->[0]->doit()**$self->[2]->doit();
+    }
+
+    sub My_Nodes::Script::doit {
+        my ($self) = @_;
+        return join q{ }, map { $_->doit() } @{$self};
+    }
+
+=for Marpa::R3::Display::End
+
 =head1 About this document
 
-This document is intended for readers already familiar with
-Marpa::R3's BNF (Stuifzand) interface.
-It is an introduction to Marpa's Scanless interface,
-dealing with the concepts behind the interface.
-The reference documentation for the
-scanless interface is in two separate documents,
-L<one dealing with scanless grammar objects|Marpa::R3::Scanless::G>
+This document
+is an introduction and overview
+to Marpa's Scanless interface (SLIF).
+Marpa::R3's top-level page has
+L<an SLIF tutorial in Marpa's top-level page|Marpa::R3>.
+If you are new to Marpa or its SLIF,
+you probably want to start with that.
+
+This document follows up on the tutorial,
+looking more deeply and carefully at the concepts
+behind the SLIF.
+Separate documents provide
+the reference documentation for
+L<Scanless grammar objects|Marpa::R3::Scanless::G>,
+L<Scanless recognizer objects|Marpa::R3::Scanless::R>
 and
-L<one dealing with scanless recognizer objects|Marpa::R3::Scanless::R>.
+L<the Scanless DSL|Marpa::R3::Scanless::DSL>.
 
 =head1 The two levels of language description
 
@@ -73,18 +174,20 @@ but in practice it ignores most of the character-by-character issues,
 and it almost always avoids dealing with whitespace.
 
 For reasons that will become clear later,
-I will sometimes call the lexical level, G0,
+I will sometimes call the lexical level, L0,
 and will sometimes call the structural level, G1.
+(For historic reasons, L0 is sometimes also called G0.)
+
 It is important to realize
-that the difference between G0 and G1 is one
-of level of descripton and
+that the difference between L0 and G1 is one
+of level of description and
 NOT one of precision or exactness.
 A structural description of Perl's C<use> statement,
 much like the one I showed above,
 is in Perl's source code (C<perly.y>),
 along with many other, similar,
 structural-level descriptions.
-These that are used
+These are used to
 generate the production parser for Perl so,
 clearly, structural level descriptions are every bit
 as much a precision instrument as regular expressions.
@@ -93,7 +196,7 @@ as much a precision instrument as regular expressions.
 
 In order to focus on very basic issues,
 I will use as an example,
-an very simple language with a very simple semantics.
+a very simple language with a very simple semantics.
 The language consists of decimal digits and ASCII spaces.
 The semantics will treat it as a series of integers to be added.
 
@@ -220,7 +323,7 @@ normalize-whitespace: 1
 In this example, three of the scanless interface's extensions
 to the Stuifzand interface are used.
 First, the tilde ("C<~>") is used to separate LHS and RHS of rules at the lexical
-(G0) level.
+(L0) level.
 Rules whose LHS and RHS are separated by the traditional BNF operator ("C<::=>")
 are at the structural (G1) level.
 
@@ -236,79 +339,92 @@ then you use the "C<~>" operator.
 
 Perl character classes are now allowed on the RHS of prioritized and quantified
 rules.
-The example shows character classes only in G0 rules,
+The example shows character classes only in L0 rules,
 but character classes can also be used in G1 rules.
 When a character class is used
 in a G1 rule, it still must be implemented at
-the G0 level.
+the L0 level.
 Marpa knows this and "does what you mean."
 
-=head2 Discard rules
+=head2 Discard pseudo-rules
 
 A new type of rule is introduced:
-a "discard" rule.
-A discard rule has a C<:discard> pseudo-symbol on its LHS
+a "discard" pseudo-rule.
+A discard pseudo-rule has a C<:discard> pseudo-symbol on its LHS
 and one symbol name on its RHS.
 It indicates that, when the RHS symbol is recognized,
 it should not be passed on as usual to the structural (G1) level.
-Instead, the lexical (G0) level will simply "discard" what it has
+Instead, the lexical (L0) level will simply "discard" what it has
 found.
 In the example, whitespace is discarded.
 
 =head1 Lexemes
 
-Tokens at the boundary between G0 and G1 have special
+Tokens at the boundary between L0 and G1 have special
 significance.
-The top-level undiscarded symbols in G0,
-which will be called "G0 lexemes",
+The top-level undiscarded symbols in L0,
+which will be called "L0 lexemes",
 go on to become the terminals in G1.
 G1's terminals are called "G1 lexemes".
-To find the "G0 lexemes",
+To find the "L0 lexemes",
 Marpa looks for symbols which are on
-the LHS of a G0 rule, but not on the RHS of any G0 rule.
+the LHS of a L0 rule, but not on the RHS of any L0 rule.
 To find the "G1 lexemes",
 Marpa looks for symbols on the RHS of at least one G1 rule,
 but not on the LHS of any G1 rule.
 
-G0 and G1 should agree on what is a lexeme and what is not.
+L0 and G1 should agree on what is a lexeme and what is not.
 If they do not,
 the programmer receives a fatal message which describes the
 problem and the symbols involved.
 So in practice I will usually simply refer to "lexemes".
 
-=head1 Longest tokens match
+=head1 Longest acceptable tokens match
 
-The G0 grammar looks for tokens on a longest B<tokens> match basis.
-Tokens in discard rules are thrown away, and the rest are passed on
-to the G1 grammar.
-Note that match is longest TOKENS.
-There may be more than one longest match, in which case Marpa
-uses the full set of longest matches.
+If you specify
+"C<< latm => 1 >>"
+as the default,
+which you almost always should,
+the L0 grammar looks for tokens on a
+longest acceptable tokens match (LATM) basis.
+Tokens which the structural grammar would reject
+are thrown away.
+So are tokens in discard pseudo-rules.
+The rest are passed on to the G1 grammar.
+
+Note that the match is longest TOKENS.
+Several tokens may have the same length,
+so several tokens may be "longest".
+When that happens, Marpa
+uses the full set of longest tokens
+in looking for possible parses.
+For more about LATM and its alternative, LTM,
+see L<the detailed description of the C<latm>
+adverb|Marpa::R3::Scanless::DSL/"latm">.
 
 =head1 Semantics
 
-The value of a G0 rule is always the string it matches,
+The value of a L0 rule is always the string it matches,
 and the value of a lexeme from the G1 point of view is the
-same as its value from the G0 point of view.
+same as its value from the L0 point of view.
 This means that it makes no sense to specify semantic
-actions for G0 rules, and that is not allowed.
+actions for L0 rules, and that is not allowed.
 
 With the exception of lexeme values,
 the semantics of the G1 grammar are exactly the
 same as for ordinary grammars.
 Actions may be specified for G1 rules and will
-behave in
-L<the same way as they do for
-ordinary grammars|Marpa::R3::Semantics>.
+behave as described in
+L<Marpa::R3::Semantics>.
 
 =head1 Implementation
 
 The scannerless interface uses two co-operating Marpa grammars,
 an approach pioneered by Andrew Rodland.
-There are separate Marpa grammars for the G0 and G1 levels,
+There are separate Marpa grammars for the L0 and G1 levels,
 as well as separate parsers.
 The details of their interaction are hidden from the user.
-Typically, the G0 parser finds tokens and passes them up to the
+Typically, the L0 parser finds tokens and passes them up to the
 G1 parser.
 
 The interface described in
@@ -323,7 +439,7 @@ before changing to the dual grammar implementation.
 =for Marpa::R3::Display
 ignore: 1
 
-  Copyright 2013 Jeffrey Kegler
+  Copyright 2014 Jeffrey Kegler
   This file is part of Marpa::R3.  Marpa::R3 is free software: you can
   redistribute it and/or modify it under the terms of the GNU Lesser
   General Public License as published by the Free Software Foundation,

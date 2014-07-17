@@ -1,4 +1,4 @@
-# Copyright 2013 Jeffrey Kegler
+# Copyright 2014 Jeffrey Kegler
 # This file is part of Marpa::R3.  Marpa::R3 is free software: you can
 # redistribute it and/or modify it under the terms of the GNU Lesser
 # General Public License as published by the Free Software Foundation,
@@ -978,7 +978,7 @@ sub Marpa::R3::Perl::new {
 } ## end sub Marpa::R3::Perl::new
 
 my @RECCE_NAMED_ARGUMENTS =
-    qw(trace_tasks trace_terminals trace_values trace_actions);
+    qw(trace_terminals trace_values trace_actions);
 
 sub token_not_accepted {
     my ( $ppi_token, $token_name, $token_value, $length ) = @_;
@@ -1056,13 +1056,14 @@ sub Marpa::R3::Perl::read_tokens {
     $hash_arg //= {};
 
     my @recce_args = ();
-    HASH_ARG: while ( my ( $arg, $value ) = each %{$hash_arg} ) {
-        if ( $arg ~~ \@RECCE_NAMED_ARGUMENTS ) {
+    HASH_ARG: for my $arg ( keys %{$hash_arg} ) {
+        my $value = $hash_arg->{$arg};
+        if ( grep { $_ eq $arg } @RECCE_NAMED_ARGUMENTS ) {
             push @recce_args, $arg, $value;
             next HASH_ARG;
         }
         Carp::croak("Unknown hash arg: $arg");
-    } ## end HASH_ARG: while ( my ( $arg, $value ) = each %{$hash_arg} )
+    } ## end HASH_ARG: for my $arg ( keys %{$hash_arg} )
 
     my $grammar = $parser->{grammar};
 
@@ -1108,7 +1109,9 @@ sub Marpa::R3::Perl::earleme_complete {
     my $grammar_c = $grammar->thin();
 
     if ( $parser->{in_prefix} ) {
-        if ( 'target_start_marker' ~~ $parser->{terminals_expected} ) {
+        if ( grep { $_ eq 'target_start_marker' }
+            @{ $parser->{terminals_expected} } )
+        {
             $recce->alternative('target_start_marker');
         }
         $recce->alternative('non_perl_token');
@@ -1224,11 +1227,11 @@ sub read_PPI_token {
     if ( $PPI_type eq 'PPI::Token::Operator' ) {
         my $content = $token->{content};
         $perl_type = $perl_type_by_op{$content};
-	if (not defined $perl_type) {
-	  unknown_ppi_token($token);
-	  $parser->earleme_complete();
-	  goto SUCCESS;
-	}
+        if (not defined $perl_type) {
+          unknown_ppi_token($token);
+          $parser->earleme_complete();
+          goto SUCCESS;
+        }
         if ( $perl_type eq 'PLUS' ) {
 
             # Apply the "ruby slippers"
@@ -1238,7 +1241,7 @@ sub read_PPI_token {
             my $expected_tokens = $parser->{terminals_expected};
             my $token_found;
             TYPE: for my $type (@potential_types) {
-                next TYPE if not $type ~~ $expected_tokens;
+                next TYPE if not grep { $_ eq $type } @{$expected_tokens};
                 $token_found = 1;
                 defined $recce->alternative( $type, \$content, 1 )
                     or token_not_accepted( $token, $type, $content, 1 );
@@ -1257,7 +1260,7 @@ sub read_PPI_token {
             my @potential_types = qw(ADDOP UMINUS);
             my $token_found;
             TYPE: for my $type (@potential_types) {
-                next TYPE if not $type ~~ $expected_tokens;
+                next TYPE if not grep { $_ eq $type } @{$expected_tokens};
                 $token_found = 1;
                 defined $recce->alternative( $type, \$content, 1 )
                     or token_not_accepted( $token, $type, $content, 1 );
@@ -1276,16 +1279,16 @@ sub read_PPI_token {
         my $content = $token->{content};
         $perl_type = $perl_type_by_structure{$content};
         my $expected_tokens = $parser->{terminals_expected};
-	if ( not defined $perl_type ) {
-	    unknown_ppi_token($token);
-	    $parser->earleme_complete();
-	    goto SUCCESS;
-	}
+        if ( not defined $perl_type ) {
+            unknown_ppi_token($token);
+            $parser->earleme_complete();
+            goto SUCCESS;
+        }
         if ( $perl_type eq 'RCURLY' ) {
             if ((   not defined $Marpa::R3::Perl::LAST_PERL_TYPE
                     or $Marpa::R3::Perl::LAST_PERL_TYPE ne 'SEMI'
                 )
-                and 'SEMI' ~~ $expected_tokens
+                and ( grep { 'SEMI' eq $_ } @{$expected_tokens} )
                 )
             {
                 defined $recce->alternative( 'SEMI', \q{;} )
@@ -1307,7 +1310,7 @@ sub read_PPI_token {
             }
             my $token_found;
             TYPE: for my $type (@potential_types) {
-                next TYPE if not $type ~~ $expected_tokens;
+                next TYPE if not grep { $type eq $_ } @{$expected_tokens};
                 $token_found = 1;
                 defined $recce->alternative( $type, \$content, 1 )
                     or token_not_accepted( $token, $type, $content, 1 );
@@ -1411,10 +1414,10 @@ sub Marpa::R3::Perl::find_perl {
         )
     {
         if ($recce->exhausted())
-	{
-	  die 'Exhausted but no program found\?' if not defined $last_end_marker_ix;
-	  last TOKEN;
-	}
+        {
+          die 'Exhausted but no program found\?' if not defined $last_end_marker_ix;
+          last TOKEN;
+        }
         my $current_earleme = $recce->current_earleme();
         $earleme_to_PPI_token->[$current_earleme] //= $PPI_token_ix;
         $PPI_token_to_earleme[$PPI_token_ix] = $current_earleme;
@@ -1425,17 +1428,18 @@ sub Marpa::R3::Perl::find_perl {
             last TOKEN;
         }
         my $terminals_expected = $parser->{terminals_expected};
-        if ( 'non_trivial_target_end' ~~ $terminals_expected ) {
-            $in_prefix = $parser->{in_prefix} = 0;
-            $last_end_marker_ix = $PPI_token_ix;
-            $last_end_marker_earleme = $recce->current_earleme();
-        } ## end if ( 'non_trivial_target_end' ~~ $terminals_expected)
-        if ( defined $last_end_marker_earleme
-            && 'target_end_marker' ~~ $terminals_expected )
+        if ( grep { $_ eq 'non_trivial_target_end' } @{$terminals_expected} )
         {
-            $last_end_marker_ix = $PPI_token_ix;
+            $in_prefix = $parser->{in_prefix} = 0;
+            $last_end_marker_ix      = $PPI_token_ix;
             $last_end_marker_earleme = $recce->current_earleme();
-        } ## end if ( defined $last_end_marker && 'target_end_marker' ~~...)
+        } ## end if ( grep { $_ eq 'non_trivial_target_end' } @{...})
+        if ( defined $last_end_marker_earleme
+            && grep { $_ eq 'target_end_marker' } @{$terminals_expected} )
+        {
+            $last_end_marker_ix      = $PPI_token_ix;
+            $last_end_marker_earleme = $recce->current_earleme();
+        } ## end if ( defined $last_end_marker_earleme && grep { $_ eq...})
     } ## end for ( $PPI_token_ix = $first_token_ix // 0; $PPI_token_ix...)
 
     # We are one past the last token successfully parsed
@@ -1448,10 +1452,10 @@ sub Marpa::R3::Perl::find_perl {
     my $start;
     ITEM: for my $item (@{$report}) {
         my ($rule_id, $dot_position, $origin) = @{$item};
-	next ITEM if $dot_position >= 0;
-	next ITEM if ($grammar->rule($rule_id))[0] ne 'prog';
-	$start //= $origin;
-	$start = $origin if $start > $origin;
+        next ITEM if $dot_position >= 0;
+        next ITEM if ($grammar->rule($rule_id))[0] ne 'prog';
+        $start //= $origin;
+        $start = $origin if $start > $origin;
     }
     die 'End marker, but no Perl prog?' if not defined $start;
     my $start_PPI_ix = $earleme_to_PPI_token->[$start];
@@ -1493,3 +1497,5 @@ sub Marpa::R3::Perl::default_show_location {
 } ## end sub Marpa::R3::Perl::default_show_location
 
 1;
+
+# vim: set expandtab shiftwidth=4:

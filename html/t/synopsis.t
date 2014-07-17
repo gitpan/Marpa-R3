@@ -1,5 +1,5 @@
 #!perl
-# Copyright 2013 Jeffrey Kegler
+# Copyright 2014 Jeffrey Kegler
 # This file is part of Marpa::R3.  Marpa::R3 is free software: you can
 # redistribute it and/or modify it under the terms of the GNU Lesser
 # General Public License as published by the Free Software Foundation,
@@ -38,9 +38,6 @@ BEGIN { Marpa::R3::HTML::Test::Util::load_or_skip_all('HTML::Parser'); }
 BEGIN { use Test::More tests => 9; }
 
 use Marpa::R3::Test;
-
-# This is just a dummy value for the synopsis
-my %empty_elements = ();
 
 # Marpa::R3::Display
 # name: 'HTML Synopsis: Delete Tables'
@@ -116,7 +113,7 @@ my $edited_stuff       = html(
 
 sub supply_missing_tags {
     my $tagname = Marpa::R3::HTML::tagname();
-    return if $empty_elements{$tagname};
+    return if Marpa::R3::HTML::is_empty_element($tagname);
     return
           ( Marpa::R3::HTML::start_tag() // "<$tagname>\n" )
         . Marpa::R3::HTML::contents()

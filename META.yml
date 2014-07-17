@@ -8,16 +8,29 @@ configure_requires:
   CPAN::Meta::Converter: 2.120921
   Carp: 1.08
   Config::AutoConf: 0.22
+  Cwd: 3.2501
   Data::Dumper: 2.125
+  DynaLoader: 1.08
+  English: 1.04
+  Exporter: 5.62
   ExtUtils::CBuilder: 0.27
-  ExtUtils::MakeMaker: 0
+  ExtUtils::MakeMaker: 6.42
+  ExtUtils::Manifest: 1.51_01
+  ExtUtils::Mkbootstrap: 6.42
+  Fatal: 1.05
+  File::Copy: 2.11
+  File::Spec: 3.2501
+  IPC::Cmd: 0.40_1
   List::Util: 1.21
   Module::Build: 0.4003
+  PPI: 1.206
   Scalar::Util: 1.21
   Test::More: 0.94
+  Time::Piece: 1.12
+  XSLoader: 0.08
 dynamic_config: 1
-generated_by: 'Module::Build version 0.4003, CPAN::Meta::Converter version 2.120921'
-license: unknown
+generated_by: 'Module::Build version 0.4202, CPAN::Meta::Converter version 2.132830'
+license: open_source
 meta-spec:
   url: http://module-build.sourceforge.net/META-spec-v1.4.html
   version: 1.4
@@ -42,6 +55,8 @@ no_index:
     - Marpa::R3::Display
     - Marpa::R3::Inner
     - Marpa::R3::Internal
+    - Marpa::R3::MetaAST
+    - Marpa::R3::MetaG
     - Marpa::R3::Stuifzand
   package:
     - Marpa::R3::HTML
@@ -51,95 +66,80 @@ no_index:
     - Marpa::R3::Display
     - Marpa::R3::Inner
     - Marpa::R3::Internal
+    - Marpa::R3::MetaAST
+    - Marpa::R3::MetaG
     - Marpa::R3::Stuifzand
     - Marpa::R3::Thin::Trace
 provides:
   Marpa::R3:
     file: lib/Marpa/R3.pm
-    version: 3.001_001
+    version: 3.003_000
+  Marpa::R3::ASF:
+    file: lib/Marpa/R3/ASF.pm
+    version: 3.003_000
   Marpa::R3::Grammar:
     file: lib/Marpa/R3/Grammar.pm
-    version: 3.001_001
+    version: 3.003_000
   Marpa::R3::HTML:
     file: html/lib/Marpa/R3/HTML.pm
-    version: 3.001_001
+    version: 3.003_000
   Marpa::R3::HTML::Callback:
     file: html/lib/Marpa/R3/HTML/Callback.pm
-    version: 3.001_001
+    version: 3.003_000
   Marpa::R3::HTML::Config:
     file: html/lib/Marpa/R3/HTML/Config.pm
-    version: 0
+    version: 3.003_000
   Marpa::R3::HTML::Config::Compile:
     file: html/lib/Marpa/R3/HTML/Config/Compile.pm
-    version: 0
-  Marpa::R3::HTML::Internal:
-    file: html/lib/Marpa/R3/HTML.pm
-    version: 0
-  Marpa::R3::HTML::Internal::Callback:
-    file: html/lib/Marpa/R3/HTML/Callback.pm
-    version: 0
-  Marpa::R3::HTML::Internal::Config::Default:
-    file: html/lib/Marpa/R3/HTML/Config/Default.pm
-    version: 0
-  Marpa::R3::HTML::Internal::Core:
-    file: html/lib/Marpa/R3/HTML/Config/Core.pm
-    version: 0
-  Marpa::R3::Inner::Scanless:
-    file: lib/Marpa/R3/Scanless.pm
-    version: 0
-  Marpa::R3::Inner::Scanless::Symbol:
-    file: lib/Marpa/R3/Scanless.pm
-    version: 0
-  Marpa::R3::Inner::Scanless::Symbol_List:
-    file: lib/Marpa/R3/Scanless.pm
-    version: 0
-  Marpa::R3::Internal:
-    file: lib/Marpa/R3/Internal.pm
-    version: 3.001_001
-  Marpa::R3::Internal::Grammar:
-    file: lib/Marpa/R3/Grammar.pm
-    version: 0
-  Marpa::R3::Internal::Recognizer:
-    file: lib/Marpa/R3/Recognizer.pm
-    version: 0
-  Marpa::R3::Internal::Stuifzand:
-    file: lib/Marpa/R3/Stuifzand.pm
-    version: 0
-  Marpa::R3::Internal::Stuifzand::Symbol:
-    file: lib/Marpa/R3/Stuifzand.pm
-    version: 0
-  Marpa::R3::Internal::Stuifzand::Symbol_List:
-    file: lib/Marpa/R3/Stuifzand.pm
-    version: 0
-  Marpa::R3::Internal::Value:
-    file: lib/Marpa/R3/Value.pm
-    version: 0
+    version: 3.003_000
+  Marpa::R3::MetaAST:
+    file: lib/Marpa/R3/MetaAST.pm
+    version: 3.003_000
+  Marpa::R3::MetaG:
+    file: lib/Marpa/R3/MetaG.pm
+    version: 3.003_000
   Marpa::R3::Recognizer:
     file: lib/Marpa/R3/Recognizer.pm
-    version: 3.001_001
-  Marpa::R3::Scanless:
-    file: lib/Marpa/R3/Scanless.pm
-    version: 3.001_001
+    version: 3.003_000
+  Marpa::R3::Scanless::G:
+    file: lib/Marpa/R3/SLG.pm
+    version: 3.003_000
+  Marpa::R3::Scanless::R:
+    file: lib/Marpa/R3/SLR.pm
+    version: 3.003_000
   Marpa::R3::Stuifzand:
     file: lib/Marpa/R3/Stuifzand.pm
-    version: 3.001_001
+    version: 3.003_000
   Marpa::R3::Thin::Trace:
     file: lib/Marpa/R3/Thin/Trace.pm
-    version: 3.001_001
+    version: 3.003_000
   Marpa::R3::Value:
     file: lib/Marpa/R3/Value.pm
-    version: 3.001_001
-recommends:
-  Config::AutoConf: 0.22
-  ExtUtils::MakeMaker: 0
-  PPI: 1.206
+    version: 3.003_000
 requires:
   Carp: 1.08
+  Cwd: 3.2501
   Data::Dumper: 2.125
+  DynaLoader: 1.08
+  English: 1.04
+  Exporter: 5.62
+  ExtUtils::CBuilder: 0.27
+  ExtUtils::MakeMaker: 6.42
+  ExtUtils::Manifest: 1.51_01
+  ExtUtils::Mkbootstrap: 6.42
+  Fatal: 1.05
+  File::Copy: 2.11
+  File::Spec: 3.2501
   HTML::Entities: 3.68
   HTML::Parser: 3.69
+  IPC::Cmd: 0.40_1
   List::Util: 1.21
+  PPI: 1.206
   Scalar::Util: 1.21
+  Test::More: 0.94
+  Time::Piece: 1.12
+  XSLoader: 0.08
 resources:
-  repository: git://github.com/jeffreykegler/Marpa-R3.git
-version: 3.001_001
+  license: http://www.gnu.org/licenses/lgpl-3.0.txt
+  repository: git://github.com/jeffreykegler/Marpa--R3.git
+version: 3.003_000

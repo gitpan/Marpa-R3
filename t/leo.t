@@ -1,5 +1,5 @@
 #!perl
-# Copyright 2013 Jeffrey Kegler
+# Copyright 2014 Jeffrey Kegler
 # This file is part of Marpa::R3.  Marpa::R3 is free software: you can
 # redistribute it and/or modify it under the terms of the GNU Lesser
 # General Public License as published by the Free Software Foundation,
@@ -78,39 +78,39 @@ Marpa::R3::Test::is( $grammar->show_rules,
 3: C -> /* empty !used */
 END_OF_STRING
 
-Marpa::R3::Test::is( $grammar->show_AHFA, <<'END_OF_STRING', 'Leo168 AHFA' );
-* S0:
-S['] -> . S
- <S> => S2; leo(S['])
-* S1: predict
-S -> . a S
-S -> . a S[]
-S -> . C
-C -> . a C b
-C -> . a C[] b
- <C> => S4; leo(S)
- <a> => S1; S3
-* S2: leo-c
-S['] -> S .
-* S3:
-S -> a . S
-S -> a S[] .
-C -> a . C b
-C -> a C[] . b
- <C> => S7
- <S> => S6; leo(S)
- <b> => S5
-* S4: leo-c
-S -> C .
-* S5:
-C -> a C[] b .
-* S6: leo-c
-S -> a S .
-* S7:
-C -> a C . b
- <b> => S8
-* S8:
-C -> a C b .
+Marpa::R3::Test::is( $grammar->show_ahms, <<'END_OF_STRING', 'Leo168 AHMs' );
+AHM 0: postdot = "a"
+    S ::= . a S
+AHM 1: postdot = "S"
+    S ::= a . S
+AHM 2: completion
+    S ::= a S .
+AHM 3: postdot = "a"
+    S ::= . a S[]
+AHM 4: completion
+    S ::= a S[] .
+AHM 5: postdot = "C"
+    S ::= . C
+AHM 6: completion
+    S ::= C .
+AHM 7: postdot = "a"
+    C ::= . a C b
+AHM 8: postdot = "C"
+    C ::= a . C b
+AHM 9: postdot = "b"
+    C ::= a C . b
+AHM 10: completion
+    C ::= a C b .
+AHM 11: postdot = "a"
+    C ::= . a C[] b
+AHM 12: postdot = "b"
+    C ::= a C[] . b
+AHM 13: completion
+    C ::= a C[] b .
+AHM 14: postdot = "S"
+    S['] ::= . S
+AHM 15: completion
+    S['] ::= S .
 END_OF_STRING
 
 my %expected = (

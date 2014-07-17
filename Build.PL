@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-# Copyright 2013 Jeffrey Kegler
+# Copyright 2014 Jeffrey Kegler
 # This file is part of Marpa::R3.  Marpa::R3 is free software: you can
 # redistribute it and/or modify it under the terms of the GNU Lesser
 # General Public License as published by the Free Software Foundation,
@@ -29,16 +29,39 @@ use lib File::Spec->catdir('inc');
 use Marpa::R3::Build_Me;
 use Marpa::R3::Config;
 
-my @packages_for_perl_autoconf = qw( Config::AutoConf ExtUtils::MakeMaker );
+my @packages_for_perl_autoconf = qw( Config::AutoConf );
+my @always_required            = qw(
+    Carp
+    Cwd
+    Data::Dumper
+    DynaLoader
+    English
+    Exporter
+    ExtUtils::CBuilder
+    ExtUtils::MakeMaker
+    ExtUtils::Manifest
+    ExtUtils::Mkbootstrap
+    Fatal
+    File::Copy
+    File::Spec
+    IPC::Cmd
+    List::Util
+    PPI
+    Scalar::Util
+    Test::More
+    Time::Piece
+    XSLoader
+);
 
 my %configure_requires =
     map { ( $_, $Marpa::R3::VERSION_FOR_CONFIG{$_} ) }
-    qw( Module::Build CPAN::Meta::Converter
-    Scalar::Util List::Util Carp Data::Dumper ExtUtils::CBuilder Test::More ),
+    qw( CPAN::Meta::Converter Module::Build ),
+    @always_required,
     @packages_for_perl_autoconf;
 my %requires =
     map { ( $_, $Marpa::R3::VERSION_FOR_CONFIG{$_} ) }
-    qw( Scalar::Util List::Util HTML::Entities HTML::Parser Carp Data::Dumper );
+    qw( HTML::Entities HTML::Parser ),
+    @always_required;
 my %recommends =
     map { ( $_, $Marpa::R3::VERSION_FOR_CONFIG{$_} ) }
     ( @packages_for_perl_autoconf, qw( PPI ) );
@@ -53,18 +76,22 @@ my %pod_files = ();
         $pod_file =~ s/ \s* [#] .* \z //xms;
         next LINE if not $pod_file =~ / [.] pod \z /xms;
         next LINE if $pod_file =~ m{ libmarpa [/] dev [/] old_pod [/] }xms;
-        if ( ( my $destfile = $pod_file ) =~ s{ \A pod [/] }{lib/Marpa/R3/}xms ) {
+        if ( ( my $destfile = $pod_file )
+            =~ s{ \A pod [/] }{lib/Marpa/R3/}xms )
+        {
             $pod_files{$pod_file} = $destfile;
-	    next LINE;
-        }
-        if ( ( my $destfile = $pod_file ) =~ s{ \A html [/] pod [/] }{lib/Marpa/R3/}xms ) {
+            next LINE;
+        } ## end if ( ( my $destfile = $pod_file ) =~ ...)
+        if ( ( my $destfile = $pod_file )
+            =~ s{ \A html [/] pod [/] }{lib/Marpa/R3/}xms )
+        {
             $pod_files{$pod_file} = $destfile;
-	    next LINE;
-        }
-	die "Failed to rename POD file: $pod_file";
-    } ## end for my $pod_file (@pod_files)
+            next LINE;
+        } ## end if ( ( my $destfile = $pod_file ) =~ ...)
+        die "Failed to rename POD file: $pod_file";
+    } ## end LINE: for my $pod_file (@pod_files)
 }
-$pod_files{'pod/Marpa_R3.pod'} = 'lib/Marpa/R3.pod';
+$pod_files{'pod/Marpa_R3.pod'}  = 'lib/Marpa/R3.pod';
 $pod_files{'html/pod/HTML.pod'} = 'lib/Marpa/R3/HTML.pod';
 
 my %pm_files = ();
@@ -92,20 +119,22 @@ for my $pm_file (qw(Version.pm Installed.pm)) {
 }
 
 my @no_index_namespace_inclusive = qw(
-        Marpa::R3::HTML
-        Marpa::R3::Value
-        Marpa::R3::Perl
-        Marpa::R3::Test
-        Marpa::R3::Display
-        Marpa::R3::Inner
-        Marpa::R3::Internal
-        Marpa::R3::Stuifzand
-        );
+    Marpa::R3::HTML
+    Marpa::R3::Value
+    Marpa::R3::Perl
+    Marpa::R3::Test
+    Marpa::R3::Display
+    Marpa::R3::Inner
+    Marpa::R3::Internal
+    Marpa::R3::MetaAST
+    Marpa::R3::MetaG
+    Marpa::R3::Stuifzand
+);
 
 my @files_to_cleanup = (
     'lib/Marpa/R3/Version.pm',   'pperl/Marpa/R3/Perl/Version.pm',
     'lib/Marpa/R3/Installed.pm', 'pperl/Marpa/R3/Perl/Installed.pm',
-    'lib/Marpa/R3.o',            'libmarpa/main/build',
+    'lib/Marpa/R3.o',            'libmarpa_build'
 );
 
 my $build = Marpa::R3::Build_Me->new(
@@ -123,10 +152,8 @@ my $build = Marpa::R3::Build_Me->new(
         'html/script/marpa_r3_html_fmt',
         'html/script/marpa_r3_html_score',
     ],
-    xs_files   => { 'xs/R3.xs' => 'lib/Marpa/R3.xs' },
-    meta_merge => {
-        resources =>
-            { repository => 'git://github.com/jeffreykegler/Marpa-R3.git', },
+    xs_files => { 'xs/R3.xs' => 'lib/Marpa/R3.xs' },
+    meta_add => {
         no_index => {
             directory => [
                 qw( pperl tool libmarpa author.t
@@ -141,10 +168,20 @@ my $build = Marpa::R3::Build_Me->new(
                 [ @no_index_namespace_inclusive, 'Marpa::R3::Thin::Trace' ],
         }
     },
-    pod_files          => \%pod_files,
-    create_readme      => 0,
-    test_files         => [ map { glob $_ } qw(t/*.t html/t/*.t) ],
-    getoptions         => { Dev => {}, 'Marpa-debug' => {} },
+    meta_merge => {
+        resources =>
+            { repository => 'git://github.com/jeffreykegler/Marpa--R3.git', },
+    },
+    pod_files     => \%pod_files,
+    license       => 'lgpl3',
+    create_readme => 0,
+
+    # Removed per suggestion of Andreas Koenig
+    # create_makefile_pl => 'small',
+    test_files => [ map { glob $_ } qw(t/*.t html/t/*.t) ],
+    getoptions => { Dev => {}, 'Marpa-debug' => {} },
 );
 
 $build->create_build_script;
+
+# vim: expandtab shiftwidth=4:

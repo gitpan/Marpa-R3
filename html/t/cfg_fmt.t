@@ -1,5 +1,5 @@
 #!perl
-# Copyright 2013 Jeffrey Kegler
+# Copyright 2014 Jeffrey Kegler
 # This file is part of Marpa::R3.  Marpa::R3 is free software: you can
 # redistribute it and/or modify it under the terms of the GNU Lesser
 # General Public License as published by the Free Software Foundation,
@@ -37,12 +37,13 @@ BEGIN {
 
 BEGIN { Marpa::R3::HTML::Test::Util::load_or_skip_all('HTML::Parser'); }
 
-BEGIN { Test::More::plan tests => 20; }
+BEGIN { Test::More::plan tests => 10; }
 
 use lib 'tool/lib';
 use Marpa::R3::Test;
 
-my @script_dir = qw( blib script );
+my $blib = $ENV{MARPA_TEST_BLIB} // 'blib';
+my $script_dir = File::Spec->catdir( $blib, 'script' );
 
 sub run_one_test {
     my ( $test_name, $html, $config_ref, $expected_ref ) = @_;
@@ -60,16 +61,15 @@ sub run_one_test {
     );
     print {$cfg_fh} ${$config_ref};
     close $cfg_fh;
-    my ($output, $stderr) = Marpa::R3::HTML::Test::Util::run_with_stderr(
-        File::Spec->catfile( @script_dir, 'marpa_r3_html_fmt' ),
-	'--no-added-tag',
+    my $output = Marpa::R3::HTML::Test::Util::run_command(
+        File::Spec->catfile( $script_dir, 'marpa_r3_html_fmt' ),
+        '--no-added-tag',
         '--compile=' . $test_config_name,
         $html_file_name
     );
 
     unlink $test_config_name, $html_file_name;
     Marpa::R3::Test::is( $output, ${$expected_ref}, $test_name );
-    Marpa::R3::Test::is( $stderr, q{}, "$test_name: stderr");
 } ## end sub run_one_test
 
 my $default_config = do {

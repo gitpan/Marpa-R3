@@ -1,5 +1,5 @@
 #!perl
-# Copyright 2013 Jeffrey Kegler
+# Copyright 2014 Jeffrey Kegler
 # This file is part of Marpa::R3.  Marpa::R3 is free software: you can
 # redistribute it and/or modify it under the terms of the GNU Lesser
 # General Public License as published by the Free Software Foundation,
@@ -56,22 +56,21 @@ Marpa::R3::Test::is( $grammar->show_rules,
 1: S -> /* empty !used */
 END_OF_STRING
 
-Marpa::R3::Test::is( $grammar->show_AHFA, <<'END_OF_STRING', 'Leo166 AHFA' );
-* S0:
-S['] -> . S
- <S> => S2; leo(S['])
-* S1: predict
-S -> . a S
-S -> . a S[]
- <a> => S1; S3
-* S2: leo-c
-S['] -> S .
-* S3:
-S -> a . S
-S -> a S[] .
- <S> => S4; leo(S)
-* S4: leo-c
-S -> a S .
+Marpa::R3::Test::is( $grammar->show_ahms, <<'END_OF_STRING', 'Leo166 AHMs' );
+AHM 0: postdot = "a"
+    S ::= . a S
+AHM 1: postdot = "S"
+    S ::= a . S
+AHM 2: completion
+    S ::= a S .
+AHM 3: postdot = "a"
+    S ::= . a S[]
+AHM 4: completion
+    S ::= a S[] .
+AHM 5: postdot = "S"
+    S['] ::= . S
+AHM 6: completion
+    S['] ::= S .
 END_OF_STRING
 
 my $length = 50;
@@ -80,7 +79,7 @@ LEO_FLAG: for my $leo_flag ( 0, 1 ) {
     my $recce = Marpa::R3::Recognizer->new(
         { grammar => $grammar, leo => $leo_flag } );
 
-    my $i                 = 0;
+    my $i = 0;
 
 # Marpa::R3::Display
 # name: latest_earley_set() Synopsis
@@ -97,7 +96,7 @@ LEO_FLAG: for my $leo_flag ( 0, 1 ) {
         $max_size = $size > $max_size ? $size : $max_size;
     } ## end while ( $i++ < $length )
 
-    my $expected_size = $leo_flag ? 4 : $length + 2;
+    my $expected_size = $leo_flag ? 6 : $length + 4;
     Marpa::R3::Test::is( $max_size, $expected_size,
         "Leo flag $leo_flag, size" );
 

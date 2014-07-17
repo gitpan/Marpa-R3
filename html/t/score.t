@@ -1,5 +1,5 @@
 #!perl
-# Copyright 2013 Jeffrey Kegler
+# Copyright 2014 Jeffrey Kegler
 # This file is part of Marpa::R3.  Marpa::R3 is free software: you can
 # redistribute it and/or modify it under the terms of the GNU Lesser
 # General Public License as published by the Free Software Foundation,
@@ -38,20 +38,22 @@ BEGIN {
 # even though we do not use it
 BEGIN { Marpa::R3::HTML::Test::Util::load_or_skip_all('HTML::Parser'); }
 
-use Test::More tests => 4;
+use Test::More tests => 2;
 
 use lib 'tool/lib';
 use lib 'html/tool/lib';
 use Marpa::R3::Test;
 use Marpa::R3::HTML::Test::Util;
 
-my @script_dir = qw( blib script );
+my $blib = $ENV{MARPA_TEST_BLIB} // 'blib';
+my $script_dir = File::Spec->catdir( $blib, 'script' );
+
 my @data_dir   = qw( html t fmt_t_data );
 
 for my $test (qw(1 2)) {
     my $expected;
     my $output = Marpa::R3::HTML::Test::Util::run_command(
-        File::Spec->catfile( @script_dir, 'marpa_r3_html_score' ),
+        File::Spec->catfile( $script_dir, 'marpa_r3_html_score' ),
         File::Spec->catfile( @data_dir, ( 'input' . $test . '.html' ) )
     );
     $output =~ s/\A [^\n]* \n//xms;

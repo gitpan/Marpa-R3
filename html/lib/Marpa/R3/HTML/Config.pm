@@ -1,4 +1,4 @@
-# Copyright 2013 Jeffrey Kegler
+# Copyright 2014 Jeffrey Kegler
 # This file is part of Marpa::R3.  Marpa::R3 is free software: you can
 # redistribute it and/or modify it under the terms of the GNU Lesser
 # General Public License as published by the Free Software Foundation,
@@ -18,6 +18,13 @@ package Marpa::R3::HTML::Config;
 use 5.010;
 use strict;
 use warnings;
+
+use vars qw($VERSION $STRING_VERSION);
+$VERSION        = '3.003_000';
+$STRING_VERSION = $VERSION;
+## no critic(BuiltinFunctions::ProhibitStringyEval)
+$VERSION = eval $VERSION;
+## use critic
 
 use English qw( -no_match_vars );
 
@@ -50,13 +57,13 @@ sub contents {
     return @{$self}{
         qw( rules runtime_tag
             ruby_slippers_rank_by_name is_empty_element
-	    primary_group_by_tag
-	    )
+            primary_group_by_tag
+            )
         };
 } ## end sub contents
 
 my $legal_preamble = <<'END_OF_TEXT';
-# Copyright 2013 Jeffrey Kegler
+# Copyright 2014 Jeffrey Kegler
 # This file is part of Marpa::R3.  Marpa::R3 is free software: you can
 # redistribute it and/or modify it under the terms of the GNU Lesser
 # General Public License as published by the Free Software Foundation,
@@ -111,8 +118,8 @@ sub as_string {
             \@contents,
             [   qw( CORE_RULES RUNTIME_TAG
                     RUBY_SLIPPERS_RANK_BY_NAME IS_EMPTY_ELEMENT
-		    PRIMARY_GROUP_BY_TAG
-		    )
+                    PRIMARY_GROUP_BY_TAG
+                    )
             ]
             )
     );
@@ -120,3 +127,5 @@ sub as_string {
 } ## end sub as_string
 
 1;
+
+# vim: set expandtab shiftwidth=4:

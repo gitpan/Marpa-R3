@@ -1,4 +1,4 @@
-# Copyright 2013 Jeffrey Kegler
+# Copyright 2014 Jeffrey Kegler
 # This file is part of Marpa::R3.  Marpa::R3 is free software: you can
 # redistribute it and/or modify it under the terms of the GNU Lesser
 # General Public License as published by the Free Software Foundation,
@@ -18,8 +18,15 @@ package Marpa::R3::HTML::Config::Compile;
 use 5.010;
 use strict;
 use warnings;
-use Data::Dumper;
 
+use vars qw($VERSION $STRING_VERSION);
+$VERSION        = '3.003_000';
+$STRING_VERSION = $VERSION;
+## no critic(BuiltinFunctions::ProhibitStringyEval)
+$VERSION = eval $VERSION;
+## use critic
+
+use Data::Dumper;
 use English qw( -no_match_vars );
 
 use Marpa::R3::HTML::Config::Core;
@@ -614,7 +621,7 @@ sub compile {
         # read other tokens
         TOKEN_TYPE: for my $t (@terminals) {
             next TOKEN_TYPE if not $string =~ m/\G($t->[1])/gcxms;
-	    # say join " ", $t->[0], '->', $1;
+            # say join " ", $t->[0], '->', $1;
             if ( not defined $recce->read( $t->[0], $1 ) ) {
                 die_on_read_problem( $recce, $t, $1, $string, pos $string );
             }
@@ -734,7 +741,7 @@ sub compile {
 
     DESC: for my $rubies_desc ( keys %ruby_config ) {
         my $candidates = $ruby_config{$rubies_desc};
-        next DESC if '</*>' ~~ $candidates;
+        next DESC if grep { '</*>' eq $_ } @{$candidates};
         $ruby_config{$rubies_desc} = [ @{$candidates}, '</*>' ];
     }
 

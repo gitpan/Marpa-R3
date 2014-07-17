@@ -1,4 +1,4 @@
-# Copyright 2013 Jeffrey Kegler
+# Copyright 2014 Jeffrey Kegler
 # This file is part of Marpa::R3.  Marpa::R3 is free software: you can
 # redistribute it and/or modify it under the terms of the GNU Lesser
 # General Public License as published by the Free Software Foundation,
@@ -52,11 +52,11 @@ You can also look for information at:
 
 =item * RT: CPAN's request tracker
 
-L<http://rt.cpan.org/NoAuth/Bugs.html?Dist=Marpa-R3>
+L<http://rt.cpan.org/NoAuth/Bugs.html?Dist=Marpa-R2>
 
 =item * Search CPAN
 
-L<http://search.cpan.org/dist/Marpa-R3>
+L<http://search.cpan.org/dist/Marpa-R2>
 
 =back
 
@@ -65,7 +65,7 @@ L<http://search.cpan.org/dist/Marpa-R3>
 =for Marpa::R3::Display
 ignore: 1
 
-  Copyright 2013 Jeffrey Kegler
+  Copyright 2014 Jeffrey Kegler
   This file is part of Marpa::R3.  Marpa::R3 is free software: you can
   redistribute it and/or modify it under the terms of the GNU Lesser
   General Public License as published by the Free Software Foundation,

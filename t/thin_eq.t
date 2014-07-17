@@ -1,5 +1,5 @@
 #!perl
-# Copyright 2013 Jeffrey Kegler
+# Copyright 2014 Jeffrey Kegler
 # This file is part of Marpa::R3.  Marpa::R3 is free software: you can
 # redistribute it and/or modify it under the terms of the GNU Lesser
 # General Public License as published by the Free Software Foundation,
@@ -33,6 +33,7 @@ use Marpa::R3;
 # name: Thin example
 
 my $grammar = Marpa::R3::Thin::G->new( { if => 1 } );
+$grammar->force_valued();
 my $symbol_S = $grammar->symbol_new();
 my $symbol_E = $grammar->symbol_new();
 $grammar->start_symbol_set($symbol_S);
@@ -79,9 +80,6 @@ my $tree          = Marpa::R3::Thin::T->new($order);
 my @actual_values = ();
 while ( $tree->next() ) {
     my $valuator = Marpa::R3::Thin::V->new($tree);
-    $valuator->rule_is_valued_set( $op_rule_id,     1 );
-    $valuator->rule_is_valued_set( $start_rule_id,  1 );
-    $valuator->rule_is_valued_set( $number_rule_id, 1 );
     my @stack = ();
     STEP: while ( 1 ) {
         my ( $type, @step_data ) = $valuator->step();
@@ -156,6 +154,7 @@ for my $actual_value (@actual_values) {
 # with a new, trivial grammar
 $grammar = $recce = $bocage = $order = $tree = undef;
 $grammar = Marpa::R3::Thin::G->new( { if => 1 } );
+$grammar->force_valued();
 
 # Marpa::R3::Display
 # name: Thin throw_set() example
@@ -165,7 +164,7 @@ $grammar->throw_set(0);
 # Marpa::R3::Display::End
 
 # Turn it right back on, for safety's sake
-$grammar->throw_set(0);
+$grammar->throw_set(1);
 
 # Marpa::R3::Display
 # name: Thin grammar error methods
@@ -269,7 +268,6 @@ $order         = Marpa::R3::Thin::O->new($bocage);
 $tree          = Marpa::R3::Thin::T->new($order);
 $tree->next();
 my $valuator = Marpa::R3::Thin::V->new($tree);
-$valuator->rule_is_valued_set( $sequence_rule_id, 1 );
 my $locations_report = q{};
 STEP: for ( ;; ) {
     my ( $type, @step_data ) = $valuator->step();

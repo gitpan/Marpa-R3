@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-# Copyright 2013 Jeffrey Kegler
+# Copyright 2014 Jeffrey Kegler
 # This file is part of Marpa::R3.  Marpa::R3 is free software: you can
 # redistribute it and/or modify it under the terms of the GNU Lesser
 # General Public License as published by the Free Software Foundation,
@@ -34,9 +34,8 @@ use Marpa::R3;
 
 my $grammar = Marpa::R3::Scanless::G->new(
     {   
-        action_object  => 'My_Actions',
-        default_action => 'do_first_arg',
         source          => \(<<'END_OF_SOURCE'),
+:default ::= action => do_first_arg
 :start ::= Script
 Script ::= Expression+ separator => comma action => do_script
 comma ~ [,]
@@ -67,59 +66,53 @@ END_OF_SOURCE
 
 # Marpa::R3::Display::End
 
-# Marpa::R3::Display
-# name: Scanless show_rules() synopsis
-
 my $show_rules_output = $grammar->show_rules();
-
-# Marpa::R3::Display::End
+$show_rules_output .= $grammar->show_rules(1, 'L0');
 
 Marpa::R3::Test::is( $show_rules_output,
     <<'END_OF_SHOW_RULES_OUTPUT', 'Scanless show_rules()' );
-Lex (G0) Rules:
-0: comma -> [[,]]
-1: [Lex-0] -> [[\(]]
-2: [Lex-1] -> [[\)]]
-3: [Lex-2] -> [[\*]] [[\*]]
-4: [Lex-3] -> [[\*]]
-5: [Lex-4] -> [[\/]]
-6: [Lex-5] -> [[\+]]
-7: [Lex-6] -> [[\-]]
-8: Number -> [[\d]]+
-9: [:discard] -> whitespace
-10: whitespace -> [[\s]]+
-11: [:discard] -> hash comment
-12: hash comment -> terminated hash comment
-13: hash comment -> unterminated final hash comment
-14: terminated hash comment -> [[\#]] hash comment body vertical space char
-15: unterminated final hash comment -> [[\#]] hash comment body
-16: hash comment body -> hash comment char*
-17: vertical space char -> [[\x{A}\x{B}\x{C}\x{D}\x{2028}\x{2029}]]
-18: hash comment char -> [[^\x{A}\x{B}\x{C}\x{D}\x{2028}\x{2029}]]
-19: [:start_lex] -> Number
-20: [:start_lex] -> [:discard]
-21: [:start_lex] -> [Lex-0]
-22: [:start_lex] -> [Lex-1]
-23: [:start_lex] -> [Lex-2]
-24: [:start_lex] -> [Lex-3]
-25: [:start_lex] -> [Lex-4]
-26: [:start_lex] -> [Lex-5]
-27: [:start_lex] -> [Lex-6]
-28: [:start_lex] -> comma
-G1 Rules:
-0: [:start] -> Script
-1: Script -> Expression+ /* discard_sep */
-2: Expression -> Expression
-3: Expression -> Expression
-4: Expression -> Expression
-5: Expression -> Expression
-6: Expression -> Number
-7: Expression -> [Lex-0] Expression [Lex-1]
-8: Expression -> Expression [Lex-2] Expression
-9: Expression -> Expression [Lex-3] Expression
-10: Expression -> Expression [Lex-4] Expression
-11: Expression -> Expression [Lex-5] Expression
-12: Expression -> Expression [Lex-6] Expression
+G1 R0 Script ::= Expression +
+G1 R1 Expression ::= Expression
+G1 R2 Expression ::= Expression
+G1 R3 Expression ::= Expression
+G1 R4 Expression ::= Expression
+G1 R5 Expression ::= Number
+G1 R6 Expression ::= '(' Expression ')'
+G1 R7 Expression ::= Expression '**' Expression
+G1 R8 Expression ::= Expression '*' Expression
+G1 R9 Expression ::= Expression '/' Expression
+G1 R10 Expression ::= Expression '+' Expression
+G1 R11 Expression ::= Expression '-' Expression
+G1 R12 :start ::= Script
+L0 R0 comma ::= [,]
+L0 R1 '(' ::= [\(]
+L0 R2 ')' ::= [\)]
+L0 R3 '**' ::= [\*] [\*]
+L0 R4 '*' ::= [\*]
+L0 R5 '/' ::= [\/]
+L0 R6 '+' ::= [\+]
+L0 R7 '-' ::= [\-]
+L0 R8 Number ::= [\d] +
+L0 R9 :discard ::= whitespace
+L0 R10 whitespace ::= [\s] +
+L0 R11 :discard ::= <hash comment>
+L0 R12 <hash comment> ::= <terminated hash comment>
+L0 R13 <hash comment> ::= <unterminated final hash comment>
+L0 R14 <terminated hash comment> ::= [\#] <hash comment body> <vertical space char>
+L0 R15 <unterminated final hash comment> ::= [\#] <hash comment body>
+L0 R16 <hash comment body> ::= <hash comment char> *
+L0 R17 <vertical space char> ::= [\x{A}\x{B}\x{C}\x{D}\x{2028}\x{2029}]
+L0 R18 <hash comment char> ::= [^\x{A}\x{B}\x{C}\x{D}\x{2028}\x{2029}]
+L0 R19 :start_lex ::= Number
+L0 R20 :start_lex ::= :discard
+L0 R21 :start_lex ::= '('
+L0 R22 :start_lex ::= ')'
+L0 R23 :start_lex ::= '**'
+L0 R24 :start_lex ::= '*'
+L0 R25 :start_lex ::= '/'
+L0 R26 :start_lex ::= '+'
+L0 R27 :start_lex ::= '-'
+L0 R28 :start_lex ::= comma
 END_OF_SHOW_RULES_OUTPUT
 
 sub my_parser {
@@ -131,7 +124,6 @@ sub my_parser {
     my $recce = Marpa::R3::Scanless::R->new( { grammar => $grammar } );
     my $self = bless { grammar => $grammar }, 'My_Actions';
     $self->{recce} = $recce;
-    local $My_Actions::SELF = $self;
 
     if ( not defined eval { $recce->read($p_input_string); 1 }
         )
@@ -142,7 +134,7 @@ sub my_parser {
         die $self->show_last_expression(), "\n", $eval_error, "\n";
     } ## end if ( not defined eval { $event_count = $recce->read...})
 
-    my $value_ref = $recce->value();
+    my $value_ref = $recce->value( $self );
     if ( not defined $value_ref ) {
         die $self->show_last_expression(), "\n",
             "No parse was found, after reading the entire input\n";
@@ -176,9 +168,6 @@ for my $test (@tests) {
 
 package My_Actions;
 
-our $SELF;
-sub new { return $SELF }
-
 sub do_parens    { shift; return $_[1] }
 sub do_add       { shift; return $_[0] + $_[2] }
 sub do_subtract  { shift; return $_[0] - $_[2] }
@@ -196,9 +185,9 @@ sub do_script    { shift; return join q{ }, @_ }
 sub show_last_expression {
     my ($self) = @_;
     my $recce = $self->{recce};
-    my ( $start, $end ) = $recce->last_completed_range('Expression');
-    return 'No expression was successfully parsed' if not defined $start;
-    my $last_expression = $recce->range_to_string( $start, $end );
+    my ( $g1_start, $g1_length ) = $recce->last_completed('Expression');
+    return 'No expression was successfully parsed' if not defined $g1_start;
+    my $last_expression = $recce->substring( $g1_start, $g1_length );
     return "Last expression successfully parsed was: $last_expression";
 } ## end sub show_last_expression
 

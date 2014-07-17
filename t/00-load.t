@@ -1,5 +1,5 @@
 #!perl
-# Copyright 2013 Jeffrey Kegler
+# Copyright 2014 Jeffrey Kegler
 # This file is part of Marpa::R3.  Marpa::R3 is free software: you can
 # redistribute it and/or modify it under the terms of the GNU Lesser
 # General Public License as published by the Free Software Foundation,
@@ -17,13 +17,14 @@
 use 5.010;
 use warnings;
 use strict;
+use English qw( -no_match_vars );
 
-use Test::More tests => 3;
+use Test::More tests => 4;
 
-use Marpa::R3;
-
-defined $INC{'Marpa/R3.pm'}
-    or Test::More::BAIL_OUT('Could not load Marpa::R3');
+if (not eval { require Marpa::R3; 1; }) {
+    Test::More::diag($EVAL_ERROR);
+    Test::More::BAIL_OUT('Could not load Marpa::R3');
+}
 
 my $marpa_version_ok = defined $Marpa::R3::VERSION;
 my $marpa_version_desc =
@@ -47,5 +48,12 @@ Test::More::ok( $libmarpa_version_ok, $libmarpa_version_desc );
 
 Test::More::diag($marpa_string_version_desc);
 Test::More::diag($libmarpa_version_desc);
+Test::More::diag('Libmarpa tag: ' . Marpa::R3::Thin::tag());
+
+my $grammar;
+my $eval_ok = eval { $grammar = Marpa::R3::Thin::G->new( { if => 1 } ); 1 };
+Test::More::diag($EVAL_ERROR) if not $eval_ok;
+Test::More::ok( ($eval_ok && $grammar), 'Thin grammar created' )
+    or Test::More::BAIL_OUT('Could not create Marpa grammar');
 
 # vim: expandtab shiftwidth=4:

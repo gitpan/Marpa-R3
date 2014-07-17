@@ -1,4 +1,4 @@
-# Copyright 2013 Jeffrey Kegler
+# Copyright 2014 Jeffrey Kegler
 # This file is part of Marpa::R3.  Marpa::R3 is free software: you can
 # redistribute it and/or modify it under the terms of the GNU Lesser
 # General Public License as published by the Free Software Foundation,
@@ -620,14 +620,13 @@ not a numeric 0 or 1.
 C<throw_set()> itself never returns failure --
 it always throws an exception.
 
-=head2 Omitted methods
+=head2 Omitted configuration methods
 
-All of
-the functions performed by Libmarpa's configuration
-methods are handled in a more Perl-centric way
-by the Marpa thin interface.
 All of the methods of Libmarpa's configuration
 class are omitted in the Marpa thin interface.
+The functions performed by Libmarpa's configuration
+methods are handled in a more Perl-centric way
+by the Marpa thin interface.
 
 =head1 Grammar methods
 
@@ -656,7 +655,23 @@ This argument is required and currently is required
 to have a value of 1,
 which specifies interface 1.
 The intent of the C<if> argument is to provide
-for backward compatibility.
+for backward compatibility in the future.
+
+Although there is no error message or warning if the hash
+ref argument
+is omitted, new code should treat
+the hash ref argument as a required argument.
+Calling C<new()> without an argument is deprecated.
+If the hash ref argument is omitted, the thin
+layer uses interface 0.
+Interface 0 cannot be specified directly,
+and is deprecated.
+The difference between interface 0 and interface 1
+is that, in interface 0, the default throw setting
+of the newly created grammar object
+is unspecified.
+(In fact, the interface 0 throw setting depends on an
+undocumented and deprecated global variable.)
 
 =head2 C<< $g->event() >>
 
@@ -872,7 +887,7 @@ method|"$g->error()" >>.
 Applications may find it more convenient to have
 C<rule_rank_set()> always throw its errors.
 
-=head2 Omitted methods
+=head2 Omitted grammar methods
 
 The C<marpa_g_ref()>
 and C<marpa_g_unref()> methods are omitted
@@ -1032,7 +1047,7 @@ On unthrown failure,
 the rule ID element in the array returned by
 C<progress_item()> will have a value of -2.
 
-=head2 Omitted methods
+=head2 Omitted recognizer methods
 
 Because the Marpa thin interface 
 handles reference counting internally,
@@ -1040,6 +1055,28 @@ it does not implement methods
 directly corresponding to
 Libmarpa's C<marpa_r_ref()>
 and C<marpa_r_unref()> methods.
+
+There are Marpa thin methods
+corresponding to
+Libmarpa's C<marpa_r_earley_set_value()>
+and C<marpa_r_earley_set_value_set()> methods,
+but not to
+Libmarpa's C<marpa_r_earley_set_values()>
+and C<marpa_r_earley_set_values_set()> methods.
+The difference between these is that the "values" form allows an
+integer and a pointer value to be set,
+while 
+the "value" form allows only an integer to be set.
+Perl applications which want to associate non-integer data with an Earley set
+should create an array, and use the integer to index the array.
+The elements of the array can contain arbitrary data.
+
+The thin interface does not implement a way to set the Earley set pointer
+value, because to do so would not add value.
+The thin interface would have to track the reference
+count of a pointer,
+and this can done as easily and efficiently,
+and with more flexibility, at the Perl level.
 
 =head2 Methods not mentioned
 
@@ -1069,7 +1106,7 @@ On success, it returns a Marpa thin bocage object.
 C<new()> obeys the throw setting.
 On unthrown failure, it returns a Perl C<undef>.
 
-=head2 Omitted methods
+=head2 Omitted bocage methods
 
 Because the Marpa thin interface 
 handles reference counting internally,
@@ -1105,7 +1142,7 @@ On success, it returns a Marpa thin ordering object.
 C<new()> obeys the throw setting.
 On unthrown failure, it returns a Perl C<undef>.
 
-=head2 Omitted methods
+=head2 Omitted ordering methods
 
 Because the Marpa thin interface 
 handles reference counting internally,
@@ -1141,7 +1178,7 @@ On success, it returns a Marpa thin tree object.
 C<new()> obeys the throw setting.
 On unthrown failure, it returns a Perl C<undef>.
 
-=head2 Omitted methods
+=head2 Omitted tree methods
 
 Because the Marpa thin interface 
 handles reference counting internally,
@@ -1211,7 +1248,7 @@ or an array of two elements.
 
 =item *
 
-It the last step was C<MARPA_STEP_RULE>,
+If the last step was C<MARPA_STEP_RULE>,
 the array contains the locations where the rule starts
 and ends,
 as returned
@@ -1408,7 +1445,7 @@ not begin with "C<MARPA_>" in one of its
 capitalization variants.
 The string will usually be a description of the error.
 
-=head2 Omitted methods
+=head2 Omitted value methods
 
 Because the Marpa thin interface 
 handles reference counting internally,
@@ -1439,6 +1476,7 @@ name: Thin example
 normalize-whitespace: 1
 
     my $grammar = Marpa::R3::Thin::G->new( { if => 1 } );
+    $grammar->force_valued();
     my $symbol_S = $grammar->symbol_new();
     my $symbol_E = $grammar->symbol_new();
     $grammar->start_symbol_set($symbol_S);
@@ -1485,9 +1523,6 @@ normalize-whitespace: 1
     my @actual_values = ();
     while ( $tree->next() ) {
         my $valuator = Marpa::R3::Thin::V->new($tree);
-        $valuator->rule_is_valued_set( $op_rule_id,     1 );
-        $valuator->rule_is_valued_set( $start_rule_id,  1 );
-        $valuator->rule_is_valued_set( $number_rule_id, 1 );
         my @stack = ();
         STEP: while ( 1 ) {
             my ( $type, @step_data ) = $valuator->step();
@@ -1543,7 +1578,7 @@ normalize-whitespace: 1
 =for Marpa::R3::Display
 ignore: 1
 
-  Copyright 2013 Jeffrey Kegler
+  Copyright 2014 Jeffrey Kegler
   This file is part of Marpa::R3.  Marpa::R3 is free software: you can
   redistribute it and/or modify it under the terms of the GNU Lesser
   General Public License as published by the Free Software Foundation,

@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-# Copyright 2013 Jeffrey Kegler
+# Copyright 2014 Jeffrey Kegler
 # This file is part of Marpa::R3.  Marpa::R3 is free software: you can
 # redistribute it and/or modify it under the terms of the GNU Lesser
 # General Public License as published by the Free Software Foundation,
@@ -100,97 +100,150 @@ Marpa::R3::Test::is( $show_rules_output,
 4: Factor -> Factor Multiply Factor
 END_RULES
 
-my $show_AHFA_output = $grammar->show_AHFA();
+my $show_ahms_output = $grammar->show_ahms();
 
-Marpa::R3::Test::is( $show_AHFA_output,
-    <<'END_AHFA', 'Implementation Example AHFA' );
-* S0:
-Expression['] -> . Expression
- <Expression> => S2; leo(Expression['])
-* S1: predict
-Expression -> . Term
-Term -> . Factor
-Factor -> . Number
-Term -> . Term Add Term
-Factor -> . Factor Multiply Factor
- <Factor> => S4
- <Number> => S5
- <Term> => S3
-* S2: leo-c
-Expression['] -> Expression .
-* S3:
-Expression -> Term .
-Term -> Term . Add Term
- <Add> => S6; S7
-* S4:
-Term -> Factor .
-Factor -> Factor . Multiply Factor
- <Multiply> => S8; S9
-* S5:
-Factor -> Number .
-* S6:
-Term -> Term Add . Term
- <Term> => S10; leo(Term)
-* S7: predict
-Term -> . Factor
-Factor -> . Number
-Term -> . Term Add Term
-Factor -> . Factor Multiply Factor
- <Factor> => S4
- <Number> => S5
- <Term> => S11
-* S8:
-Factor -> Factor Multiply . Factor
- <Factor> => S12; leo(Factor)
-* S9: predict
-Factor -> . Number
-Factor -> . Factor Multiply Factor
- <Factor> => S13
- <Number> => S5
-* S10: leo-c
-Term -> Term Add Term .
-* S11:
-Term -> Term . Add Term
- <Add> => S6; S7
-* S12: leo-c
-Factor -> Factor Multiply Factor .
-* S13:
-Factor -> Factor . Multiply Factor
- <Multiply> => S8; S9
-END_AHFA
+Marpa::R3::Test::is( $show_ahms_output,
+    <<'END_AHM', 'Implementation Example AHMs' );
+AHM 0: postdot = "Term"
+    Expression ::= . Term
+AHM 1: completion
+    Expression ::= Term .
+AHM 2: postdot = "Factor"
+    Term ::= . Factor
+AHM 3: completion
+    Term ::= Factor .
+AHM 4: postdot = "Number"
+    Factor ::= . Number
+AHM 5: completion
+    Factor ::= Number .
+AHM 6: postdot = "Term"
+    Term ::= . Term Add Term
+AHM 7: postdot = "Add"
+    Term ::= Term . Add Term
+AHM 8: postdot = "Term"
+    Term ::= Term Add . Term
+AHM 9: completion
+    Term ::= Term Add Term .
+AHM 10: postdot = "Factor"
+    Factor ::= . Factor Multiply Factor
+AHM 11: postdot = "Multiply"
+    Factor ::= Factor . Multiply Factor
+AHM 12: postdot = "Factor"
+    Factor ::= Factor Multiply . Factor
+AHM 13: completion
+    Factor ::= Factor Multiply Factor .
+AHM 14: postdot = "Expression"
+    Expression['] ::= . Expression
+AHM 15: completion
+    Expression['] ::= Expression .
+END_AHM
 
 my $show_earley_sets_output = $recce->show_earley_sets();
 
 my $expected_earley_sets = <<'END_EARLEY_SETS';
 Last Completed: 5; Furthest: 5
 Earley Set 0
-S0@0-0
-S1@0-0
+ahm14: R5:0@0-0
+  R5:0: Expression['] ::= . Expression
+ahm0: R0:0@0-0
+  R0:0: Expression ::= . Term
+ahm2: R1:0@0-0
+  R1:0: Term ::= . Factor
+ahm6: R3:0@0-0
+  R3:0: Term ::= . Term Add Term
+ahm4: R2:0@0-0
+  R2:0: Factor ::= . Number
+ahm10: R4:0@0-0
+  R4:0: Factor ::= . Factor Multiply Factor
 Earley Set 1
-S2@0-1 [p=S0@0-0; c=S3@0-1]
-S3@0-1 [p=S1@0-0; c=S4@0-1]
-S4@0-1 [p=S1@0-0; c=S5@0-1]
-S5@0-1 [p=S1@0-0; s=Number; t=\42]
+ahm5: R2$@0-1
+  R2$: Factor ::= Number .
+  [c=R2:0@0-0; s=Number; t=\42]
+ahm11: R4:1@0-1
+  R4:1: Factor ::= Factor . Multiply Factor
+  [p=R4:0@0-0; c=R2$@0-1]
+ahm3: R1$@0-1
+  R1$: Term ::= Factor .
+  [p=R1:0@0-0; c=R2$@0-1]
+ahm7: R3:1@0-1
+  R3:1: Term ::= Term . Add Term
+  [p=R3:0@0-0; c=R1$@0-1]
+ahm1: R0$@0-1
+  R0$: Expression ::= Term .
+  [p=R0:0@0-0; c=R1$@0-1]
+ahm15: R5$@0-1
+  R5$: Expression['] ::= Expression .
+  [p=R5:0@0-0; c=R0$@0-1]
 Earley Set 2
-S8@0-2 [p=S4@0-1; s=Multiply; t=\'*']
-S9@2-2
+ahm12: R4:2@0-2
+  R4:2: Factor ::= Factor Multiply . Factor
+  [c=R4:1@0-1; s=Multiply; t=\'*']
+ahm4: R2:0@2-2
+  R2:0: Factor ::= . Number
+ahm10: R4:0@2-2
+  R4:0: Factor ::= . Factor Multiply Factor
 Earley Set 3
-S2@0-3 [p=S0@0-0; c=S3@0-3]
-S3@0-3 [p=S1@0-0; c=S4@0-3]
-S4@0-3 [p=S1@0-0; c=S12@0-3]
-S12@0-3 [p=S8@0-2; c=S5@2-3]
-S5@2-3 [p=S9@2-2; s=Number; t=\1]
-S13@2-3 [p=S9@2-2; c=S5@2-3]
+ahm5: R2$@2-3
+  R2$: Factor ::= Number .
+  [c=R2:0@2-2; s=Number; t=\1]
+ahm11: R4:1@2-3
+  R4:1: Factor ::= Factor . Multiply Factor
+  [p=R4:0@2-2; c=R2$@2-3]
+ahm13: R4$@0-3
+  R4$: Factor ::= Factor Multiply Factor .
+  [p=R4:2@0-2; c=R2$@2-3]
+ahm11: R4:1@0-3
+  R4:1: Factor ::= Factor . Multiply Factor
+  [p=R4:0@0-0; c=R4$@0-3]
+ahm3: R1$@0-3
+  R1$: Term ::= Factor .
+  [p=R1:0@0-0; c=R4$@0-3]
+ahm7: R3:1@0-3
+  R3:1: Term ::= Term . Add Term
+  [p=R3:0@0-0; c=R1$@0-3]
+ahm1: R0$@0-3
+  R0$: Expression ::= Term .
+  [p=R0:0@0-0; c=R1$@0-3]
+ahm15: R5$@0-3
+  R5$: Expression['] ::= Expression .
+  [p=R5:0@0-0; c=R0$@0-3]
 Earley Set 4
-S6@0-4 [p=S3@0-3; s=Add; t=\'+']
-S7@4-4
+ahm8: R3:2@0-4
+  R3:2: Term ::= Term Add . Term
+  [c=R3:1@0-3; s=Add; t=\'+']
+ahm2: R1:0@4-4
+  R1:0: Term ::= . Factor
+ahm4: R2:0@4-4
+  R2:0: Factor ::= . Number
+ahm6: R3:0@4-4
+  R3:0: Term ::= . Term Add Term
+ahm10: R4:0@4-4
+  R4:0: Factor ::= . Factor Multiply Factor
 Earley Set 5
-S2@0-5 [p=S0@0-0; c=S3@0-5]
-S3@0-5 [p=S1@0-0; c=S10@0-5]
-S10@0-5 [p=S6@0-4; c=S4@4-5]
-S4@4-5 [p=S7@4-4; c=S5@4-5]
-S5@4-5 [p=S7@4-4; s=Number; t=\7]
-S11@4-5 [p=S7@4-4; c=S4@4-5]
+ahm5: R2$@4-5
+  R2$: Factor ::= Number .
+  [c=R2:0@4-4; s=Number; t=\7]
+ahm11: R4:1@4-5
+  R4:1: Factor ::= Factor . Multiply Factor
+  [p=R4:0@4-4; c=R2$@4-5]
+ahm3: R1$@4-5
+  R1$: Term ::= Factor .
+  [p=R1:0@4-4; c=R2$@4-5]
+ahm7: R3:1@4-5
+  R3:1: Term ::= Term . Add Term
+  [p=R3:0@4-4; c=R1$@4-5]
+ahm9: R3$@0-5
+  R3$: Term ::= Term Add Term .
+  [p=R3:2@0-4; c=R1$@4-5]
+ahm7: R3:1@0-5
+  R3:1: Term ::= Term . Add Term
+  [p=R3:0@0-0; c=R3$@0-5]
+ahm1: R0$@0-5
+  R0$: Expression ::= Term .
+  [p=R0:0@0-0; c=R3$@0-5]
+ahm15: R5$@0-5
+  R5$: Expression['] ::= Expression .
+  [p=R5:0@0-0; c=R0$@0-5]
 END_EARLEY_SETS
 
 Marpa::R3::Test::is( $show_earley_sets_output, $expected_earley_sets,
@@ -198,7 +251,7 @@ Marpa::R3::Test::is( $show_earley_sets_output, $expected_earley_sets,
 
 my $trace_output;
 open my $trace_fh, q{>}, \$trace_output;
-$recce->set( { trace_fh => $trace_fh, trace_values => 1 } );
+$recce->set( { trace_fh => $trace_fh, trace_values => 2 } );
 $value_ref = $recce->value();
 $recce->set( { trace_fh => \*STDOUT, trace_values => 0 } );
 close $trace_fh;

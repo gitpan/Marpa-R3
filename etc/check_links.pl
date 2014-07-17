@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-# Copyright 2013 Jeffrey Kegler
+# Copyright 2014 Jeffrey Kegler
 # This file is part of Marpa::R3.  Marpa::R3 is free software: you can
 # redistribute it and/or modify it under the terms of the GNU Lesser
 # General Public License as published by the Free Software Foundation,
@@ -35,9 +35,9 @@ use constant OK => 200;
 my $most_recent_distribution = pop @ARGV;
 if ( not $most_recent_distribution ) {
     my @distributions =
-        grep     {/\A Marpa [-] R3 [-] \d /xms}
+        grep     {/\A Marpa [-] R2 [-] \d /xms}
         sort map { $_->[2] }
-        CPAN::Shell->expand( 'Author', 'JKEGL' )->ls( 'Marpa-R3-*', 2 );
+        CPAN::Shell->expand( 'Author', 'JKEGL' )->ls( 'Marpa-R2-*', 2 );
     $most_recent_distribution = pop @distributions;
     $most_recent_distribution =~ s/\.tar\.gz$//xms;
 } ## end if ( not $most_recent_distribution )

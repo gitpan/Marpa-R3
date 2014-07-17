@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-# Copyright 2013 Jeffrey Kegler
+# Copyright 2014 Jeffrey Kegler
 # This file is part of Marpa::R3.  Marpa::R3 is free software: you can
 # redistribute it and/or modify it under the terms of the GNU Lesser
 # General Public License as published by the Free Software Foundation,
@@ -64,67 +64,54 @@ Marpa::R3::Test::is( $grammar->show_rules,
 3: n -> a
 END_OF_STRING
 
-Marpa::R3::Test::is( $grammar->show_AHFA,
-    <<'END_OF_STRING', 'duplicate parse AHFA' );
-* S0:
-S['] -> . S
- <S> => S2; leo(S['])
-* S1: predict
-S -> . p p S[R0:2]
-S -> . p p[] S[R0:2]
-S -> p[] . p S[R0:2]
-S -> p[] p[] . S[R0:2]
-S[R0:2] -> . p n
-S[R0:2] -> p[] . n
-p -> . a
-n -> . a
- <S[R0:2]> => S7; leo(S)
- <a> => S3
- <n> => S6; leo(S[R0:2])
- <p> => S4; S5
-* S2: leo-c
-S['] -> S .
-* S3:
-p -> a .
-n -> a .
-* S4:
-S -> p . p S[R0:2]
-S -> p p[] . S[R0:2]
-S -> p[] p . S[R0:2]
-S[R0:2] -> p . n
- <S[R0:2]> => S10
- <n> => S9; leo(S[R0:2])
- <p> => S5; S8
-* S5: predict
-S[R0:2] -> . p n
-S[R0:2] -> p[] . n
-p -> . a
-n -> . a
- <a> => S3
- <n> => S6; leo(S[R0:2])
- <p> => S11; S12
-* S6: leo-c
-S[R0:2] -> p[] n .
-* S7: leo-c
-S -> p[] p[] S[R0:2] .
-* S8:
-S -> p p . S[R0:2]
- <S[R0:2]> => S13; leo(S)
-* S9: leo-c
-S[R0:2] -> p n .
-* S10:
-S -> p p[] S[R0:2] .
-S -> p[] p S[R0:2] .
-* S11:
-S[R0:2] -> p . n
- <n> => S9; leo(S[R0:2])
-* S12: predict
-n -> . a
- <a> => S14
-* S13: leo-c
-S -> p p S[R0:2] .
-* S14:
-n -> a .
+Marpa::R3::Test::is( $grammar->show_ahms,
+    <<'END_OF_STRING', 'duplicate parse AHMs' );
+AHM 0: postdot = "p"
+    S ::= . p p S[R0:2]
+AHM 1: postdot = "p"
+    S ::= p . p S[R0:2]
+AHM 2: postdot = "S[R0:2]"
+    S ::= p p . S[R0:2]
+AHM 3: completion
+    S ::= p p S[R0:2] .
+AHM 4: postdot = "p"
+    S ::= . p p[] S[R0:2]
+AHM 5: postdot = "S[R0:2]"
+    S ::= p p[] . S[R0:2]
+AHM 6: completion
+    S ::= p p[] S[R0:2] .
+AHM 7: postdot = "p"
+    S ::= p[] . p S[R0:2]
+AHM 8: postdot = "S[R0:2]"
+    S ::= p[] p . S[R0:2]
+AHM 9: completion
+    S ::= p[] p S[R0:2] .
+AHM 10: postdot = "S[R0:2]"
+    S ::= p[] p[] . S[R0:2]
+AHM 11: completion
+    S ::= p[] p[] S[R0:2] .
+AHM 12: postdot = "p"
+    S[R0:2] ::= . p n
+AHM 13: postdot = "n"
+    S[R0:2] ::= p . n
+AHM 14: completion
+    S[R0:2] ::= p n .
+AHM 15: postdot = "n"
+    S[R0:2] ::= p[] . n
+AHM 16: completion
+    S[R0:2] ::= p[] n .
+AHM 17: postdot = "a"
+    p ::= . a
+AHM 18: completion
+    p ::= a .
+AHM 19: postdot = "a"
+    n ::= . a
+AHM 20: completion
+    n ::= a .
+AHM 21: postdot = "S"
+    S['] ::= . S
+AHM 22: completion
+    S['] ::= S .
 END_OF_STRING
 
 use constant SPACE => 0x60;

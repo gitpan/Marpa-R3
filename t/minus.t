@@ -1,5 +1,5 @@
 #!perl
-# Copyright 2013 Jeffrey Kegler
+# Copyright 2014 Jeffrey Kegler
 # This file is part of Marpa::R3.  Marpa::R3 is free software: you can
 # redistribute it and/or modify it under the terms of the GNU Lesser
 # General Public License as published by the Free Software Foundation,
@@ -68,10 +68,8 @@ sub number {
 
 sub default_action {
     shift;
-    given ( scalar @_ ) {
-        when ( $_ <= 0 ) { return q{} }
-        when (1)         { return $_[0] }
-    };
+    return q{} if scalar @_ <= 0;
+    return $_[0] if scalar @_ == 1;
     return '(' . join( q{;}, @_ ) . ')';
 } ## end sub default_action
 
@@ -130,48 +128,43 @@ Marpa::R3::Test::is( $grammar->show_rules,
 4: E -> Number
 END_RULES
 
-Marpa::R3::Test::is( $grammar->show_AHFA,
-    <<'END_AHFA', 'Minuses Equation AHFA' );
-* S0:
-E['] -> . E
- <E> => S2; leo(E['])
-* S1: predict
-E -> . E Minus E
-E -> . E MinusMinus
-E -> . MinusMinus E
-E -> . Minus E
-E -> . Number
- <E> => S6
- <Minus> => S1; S3
- <MinusMinus> => S1; S4
- <Number> => S5
-* S2: leo-c
-E['] -> E .
-* S3:
-E -> Minus . E
- <E> => S7; leo(E)
-* S4:
-E -> MinusMinus . E
- <E> => S8; leo(E)
-* S5:
-E -> Number .
-* S6:
-E -> E . Minus E
-E -> E . MinusMinus
- <Minus> => S1; S9
- <MinusMinus> => S10
-* S7: leo-c
-E -> Minus E .
-* S8: leo-c
-E -> MinusMinus E .
-* S9:
-E -> E Minus . E
- <E> => S11; leo(E)
-* S10:
-E -> E MinusMinus .
-* S11: leo-c
-E -> E Minus E .
-END_AHFA
+Marpa::R3::Test::is( $grammar->show_ahms,
+    <<'END_AHMS', 'Minuses Equation AHMs' );
+AHM 0: postdot = "E"
+    E ::= . E Minus E
+AHM 1: postdot = "Minus"
+    E ::= E . Minus E
+AHM 2: postdot = "E"
+    E ::= E Minus . E
+AHM 3: completion
+    E ::= E Minus E .
+AHM 4: postdot = "E"
+    E ::= . E MinusMinus
+AHM 5: postdot = "MinusMinus"
+    E ::= E . MinusMinus
+AHM 6: completion
+    E ::= E MinusMinus .
+AHM 7: postdot = "MinusMinus"
+    E ::= . MinusMinus E
+AHM 8: postdot = "E"
+    E ::= MinusMinus . E
+AHM 9: completion
+    E ::= MinusMinus E .
+AHM 10: postdot = "Minus"
+    E ::= . Minus E
+AHM 11: postdot = "E"
+    E ::= Minus . E
+AHM 12: completion
+    E ::= Minus E .
+AHM 13: postdot = "Number"
+    E ::= . Number
+AHM 14: completion
+    E ::= Number .
+AHM 15: postdot = "E"
+    E['] ::= . E
+AHM 16: completion
+    E['] ::= E .
+END_AHMS
 
 my %expected = map { ( $_ => 1 ) } (
     #<<< no perltidy

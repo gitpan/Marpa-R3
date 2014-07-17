@@ -1,5 +1,5 @@
 #!perl
-# Copyright 2013 Jeffrey Kegler
+# Copyright 2014 Jeffrey Kegler
 # This file is part of Marpa::R3.  Marpa::R3 is free software: you can
 # redistribute it and/or modify it under the terms of the GNU Lesser
 # General Public License as published by the Free Software Foundation,
@@ -20,9 +20,7 @@ use warnings;
 use English qw( -no_match_vars );
 use Fatal qw( open close );
 
-my %exclude = map { ( $_, 1 ) } qw(
-    Makefile.PL
-);
+my %exclude = map { ( $_, 1 ) } qw();
 
 open my $manifest, '<', '../MANIFEST'
     or Marpa::R3::exception("open of ../MANIFEST failed: $ERRNO");

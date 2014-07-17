@@ -1,5 +1,5 @@
 #!perl
-# Copyright 2013 Jeffrey Kegler
+# Copyright 2014 Jeffrey Kegler
 # This file is part of Marpa::R3.  Marpa::R3 is free software: you can
 # redistribute it and/or modify it under the terms of the GNU Lesser
 # General Public License as published by the Free Software Foundation,
@@ -105,7 +105,7 @@ Computing value for rule: 3: F -> F MultOp F
 Test Warning 1 at <LOCATION>
 * WARNING MESSAGE NUMBER 1:
 Test Warning 2 at <LOCATION>
-* ONE PLACE TO LOOK FOR THE PROBLEM IS IN THE CODE at <LOCATION>
+Marpa::R3 exception at <LOCATION>
 __END__
 
 | expected default_action run phase warning
@@ -118,7 +118,7 @@ Computing value for rule: 8: trailer -> Text
 Test Warning 1 at <LOCATION>
 * WARNING MESSAGE NUMBER 1:
 Test Warning 2 at <LOCATION>
-* ONE PLACE TO LOOK FOR THE PROBLEM IS IN THE CODE at <LOCATION>
+Marpa::R3 exception at <LOCATION>
 __END__
 
 | bad code run phase error
@@ -136,7 +136,7 @@ __END__
 Computing value for rule: 3: F -> F MultOp F
 * THIS WAS THE FATAL ERROR MESSAGE:
 Illegal division by zero at <LOCATION>
-* ONE PLACE TO LOOK FOR THE PROBLEM IS IN THE CODE at <LOCATION>
+Marpa::R3 exception at <LOCATION>
 __END__
 
 | expected default_action run phase error
@@ -146,7 +146,7 @@ __END__
 Computing value for rule: 8: trailer -> Text
 * THIS WAS THE FATAL ERROR MESSAGE:
 Illegal division by zero at <LOCATION>
-* ONE PLACE TO LOOK FOR THE PROBLEM IS IN THE CODE at <LOCATION>
+Marpa::R3 exception at <LOCATION>
 __END__
 
 | bad code run phase die
@@ -164,7 +164,7 @@ __END__
 Computing value for rule: 3: F -> F MultOp F
 * THIS WAS THE FATAL ERROR MESSAGE:
 test call to die at <LOCATION>
-* ONE PLACE TO LOOK FOR THE PROBLEM IS IN THE CODE at <LOCATION>
+Marpa::R3 exception at <LOCATION>
 __END__
 
 | expected default_action run phase die
@@ -174,7 +174,7 @@ __END__
 Computing value for rule: 8: trailer -> Text
 * THIS WAS THE FATAL ERROR MESSAGE:
 test call to die at <LOCATION>
-* ONE PLACE TO LOOK FOR THE PROBLEM IS IN THE CODE at <LOCATION>
+Marpa::R3 exception at <LOCATION>
 __END__
 
 END_OF_TEST_DATA
@@ -251,16 +251,23 @@ sub run_test {
     ### e_op_action default: $e_op_action
     ### e_number_action default: $e_number_action
 
-    while ( my ( $arg, $value ) = each %{$args} ) {
-        given ( lc $arg ) {
-            when ('e_op_action')     { $e_op_action     = $value }
-            when ('e_number_action') { $e_number_action = $value }
-            when ('default_action')  { $default_action  = $value }
-            default {
-                die "unknown argument to run_test: $arg";
-            }
-        } ## end given
-    } ## end while ( my ( $arg, $value ) = each %{$args} )
+    ARG: for my $arg ( keys %{$args} ) {
+        my $value        = $args->{$arg};
+        my $run_test_arg = lc $arg;
+        if ( $run_test_arg eq 'e_op_action' ) {
+            $e_op_action = $value;
+            next ARG;
+        }
+        if ( $run_test_arg eq 'e_number_action' ) {
+            $e_number_action = $value;
+            next ARG;
+        }
+        if ( $run_test_arg eq 'default_action' ) {
+            $default_action = $value;
+            next ARG;
+        }
+        die "unknown argument to run_test: $arg";
+    } ## end ARG: for my $arg ( keys %{$args} )
 
     ### e_op_action: $e_op_action
     ### e_number_action: $e_number_action

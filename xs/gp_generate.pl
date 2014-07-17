@@ -1,5 +1,5 @@
 #!perl
-# Copyright 2013 Jeffrey Kegler
+# Copyright 2014 Jeffrey Kegler
 # This file is part of Marpa::R3.  Marpa::R3 is free software: you can
 # redistribute it and/or modify it under the terms of the GNU Lesser
 # General Public License as published by the Free Software Foundation,
@@ -49,8 +49,11 @@ if ( @ARGV == 1 ) {
 
 my %format_by_type = (
    int => '%d',
+   Marpa_Assertion_ID => '%d',
    Marpa_IRL_ID => '%d',
-   Marpa_ISY_ID => '%d',
+   Marpa_NSY_ID => '%d',
+   Marpa_Or_Node_ID => '%d',
+   Marpa_And_Node_ID => '%d',
    Marpa_Rank => '%d',
    Marpa_Rule_ID => '%d',
    Marpa_Symbol_ID => '%d',
@@ -126,7 +129,7 @@ sub gp_generate {
 } ## end sub gp_generate
 
 print ${out} <<'END_OF_PREAMBLE';
- # Copyright 2013 Jeffrey Kegler
+ # Copyright 2014 Jeffrey Kegler
  # This file is part of Marpa::R3.  Marpa::R3 is free software: you can
  # redistribute it and/or modify it under the terms of the GNU Lesser
  # General Public License as published by the Free Software Foundation,
@@ -155,6 +158,7 @@ print {$out} 'MODULE = Marpa::R3        PACKAGE = Marpa::R3::Thin::G', "\n\n";
 
 say {$out} gp_generate(qw(error_clear));
 say {$out} gp_generate(qw(event_count));
+say {$out} gp_generate(qw(force_valued));
 say {$out} gp_generate(qw(has_cycle));
 say {$out} gp_generate(qw(highest_rule_id));
 say {$out} gp_generate(qw(highest_symbol_id));
@@ -176,8 +180,14 @@ say {$out} gp_generate(qw(sequence_separator Marpa_Rule_ID rule_id));
 say {$out} gp_generate(qw(start_symbol));
 say {$out} gp_generate(qw(start_symbol_set Marpa_Symbol_ID id));
 say {$out} gp_generate(qw(symbol_is_accessible Marpa_Symbol_ID symbol_id ));
+say {$out} gp_generate(qw(symbol_is_completion_event Marpa_Symbol_ID sym_id));
+say {$out} gp_generate(qw(symbol_is_completion_event_set Marpa_Symbol_ID sym_id int value));
 say {$out} gp_generate(qw(symbol_is_counted Marpa_Symbol_ID symbol_id ));
 say {$out} gp_generate(qw(symbol_is_nullable Marpa_Symbol_ID symbol_id ));
+say {$out} gp_generate(qw(symbol_is_nulled_event Marpa_Symbol_ID sym_id));
+say {$out} gp_generate(qw(symbol_is_nulled_event_set Marpa_Symbol_ID sym_id int value));
+say {$out} gp_generate(qw(symbol_is_prediction_event Marpa_Symbol_ID sym_id));
+say {$out} gp_generate(qw(symbol_is_prediction_event_set Marpa_Symbol_ID sym_id int value));
 say {$out} gp_generate(qw(symbol_is_nulling Marpa_Symbol_ID symbol_id ));
 say {$out} gp_generate(qw(symbol_is_productive Marpa_Symbol_ID symbol_id));
 say {$out} gp_generate(qw(symbol_is_start Marpa_Symbol_ID symbol_id));
@@ -186,34 +196,48 @@ say {$out} gp_generate(qw(symbol_is_terminal_set Marpa_Symbol_ID symbol_id int b
 say {$out} gp_generate(qw(symbol_is_valued Marpa_Symbol_ID symbol_id));
 say {$out} gp_generate(qw(symbol_is_valued_set Marpa_Symbol_ID symbol_id int boolean));
 say {$out} gp_generate(qw(symbol_new));
+say {$out} gp_generate(qw(zwa_new int default_value));
+say {$out} gp_generate(qw(zwa_place Marpa_Assertion_ID zwaid Marpa_Rule_ID xrl_id int rhs_ix));
 
 $main::CLASS_LETTER   = 'r';
 $main::LIBMARPA_CLASS = 'Marpa_Recognizer';
 print {$out} 'MODULE = Marpa::R3        PACKAGE = Marpa::R3::Thin::R', "\n\n";
 
+say {$out} gp_generate(qw(completion_symbol_activate Marpa_Symbol_ID sym_id int reactivate));
 say {$out} gp_generate(qw(current_earleme));
 say {$out} gp_generate(qw(earleme Marpa_Earley_Set_ID ordinal));
 say {$out} gp_generate(qw(earleme_complete));
 say {$out} gp_generate(qw(earley_item_warning_threshold));
 say {$out} gp_generate(qw(earley_item_warning_threshold_set int too_many_earley_items));
-say {$out} gp_generate(qw(furthest_earleme));
 say {$out} gp_generate(qw(earley_set_value Marpa_Earley_Set_ID ordinal));
-say {$out} gp_generate(qw(latest_earley_set_value_set int value));
-say {$out} gp_generate(qw(is_exhausted));
 say {$out} gp_generate(qw(expected_symbol_event_set Marpa_Symbol_ID xsyid int value));
+say {$out} gp_generate(qw(furthest_earleme));
+say {$out} gp_generate(qw(is_exhausted));
 say {$out} gp_generate(qw(latest_earley_set));
+say {$out} gp_generate(qw(latest_earley_set_value_set int value));
+say {$out} gp_generate(qw(nulled_symbol_activate Marpa_Symbol_ID sym_id int reactivate));
+say {$out} gp_generate(qw(prediction_symbol_activate Marpa_Symbol_ID sym_id int reactivate));
 say {$out} gp_generate(qw(progress_report_finish));
 say {$out} gp_generate(qw(progress_report_start Marpa_Earley_Set_ID ordinal));
-say {$out} gp_generate(qw(start_input));
+say {$out} gp_generate(qw(terminal_is_expected Marpa_Symbol_ID xsyid));
+say {$out} gp_generate(qw(zwa_default Marpa_Assertion_ID zwaid));
+say {$out} gp_generate(qw(zwa_default_set Marpa_Assertion_ID zwaid int default_value));
 
-# Nothing (as yet) in bocage class
+$main::CLASS_LETTER   = 'b';
+$main::LIBMARPA_CLASS = 'Marpa_Bocage';
+print {$out} 'MODULE = Marpa::R3        PACKAGE = Marpa::R3::Thin::B', "\n\n";
+
+say {$out} gp_generate(qw(ambiguity_metric));
+say {$out} gp_generate(qw(is_null));
 
 $main::CLASS_LETTER   = 'o';
 $main::LIBMARPA_CLASS = 'Marpa_Order';
 print {$out} 'MODULE = Marpa::R3        PACKAGE = Marpa::R3::Thin::O', "\n\n";
 
+say {$out} gp_generate(qw(ambiguity_metric));
 say {$out} gp_generate(qw(high_rank_only_set int flag));
 say {$out} gp_generate(qw(high_rank_only));
+say {$out} gp_generate(qw(is_null));
 say {$out} gp_generate(qw(rank));
 
 $main::CLASS_LETTER   = 't';
@@ -227,8 +251,9 @@ $main::CLASS_LETTER   = 'v';
 $main::LIBMARPA_CLASS = 'Marpa_Value';
 print {$out} 'MODULE = Marpa::R3        PACKAGE = Marpa::R3::Thin::V', "\n\n";
 
-say {$out} gp_generate(qw(symbol_is_valued_set Marpa_Symbol_ID symbol_id int value));
+say {$out} gp_generate(qw(valued_force));
 say {$out} gp_generate(qw(rule_is_valued_set Marpa_Rule_ID symbol_id int value));
+say {$out} gp_generate(qw(symbol_is_valued_set Marpa_Symbol_ID symbol_id int value));
 
 $main::CLASS_LETTER   = 'g';
 $main::LIBMARPA_CLASS = 'Marpa_Grammar';
@@ -239,4 +264,27 @@ say {$out} gp_generate(qw(_marpa_g_irl_lhs Marpa_IRL_ID rule_id));
 say {$out} gp_generate(qw(_marpa_g_irl_rhs Marpa_IRL_ID rule_id int ix));
 say {$out} gp_generate(qw(_marpa_g_irl_length Marpa_IRL_ID rule_id));
 say {$out} gp_generate(qw(_marpa_g_irl_rank Marpa_IRL_ID irl_id));
-say {$out} gp_generate(qw(_marpa_g_isy_rank Marpa_ISY_ID isy_id));
+say {$out} gp_generate(qw(_marpa_g_nsy_rank Marpa_NSY_ID nsy_id));
+say {$out} gp_generate(qw(_marpa_g_nsy_is_semantic Marpa_NSY_ID nsy_id));
+
+$main::CLASS_LETTER   = 'b';
+$main::LIBMARPA_CLASS = 'Marpa_Bocage';
+print {$out} 'MODULE = Marpa::R3        PACKAGE = Marpa::R3::Thin::B', "\n\n";
+
+say {$out} gp_generate(qw(_marpa_b_and_node_cause Marpa_And_Node_ID ordinal));
+say {$out} gp_generate(qw(_marpa_b_and_node_count));
+say {$out} gp_generate(qw(_marpa_b_and_node_middle Marpa_And_Node_ID and_node_id));
+say {$out} gp_generate(qw(_marpa_b_and_node_parent Marpa_And_Node_ID and_node_id));
+say {$out} gp_generate(qw(_marpa_b_and_node_predecessor Marpa_And_Node_ID ordinal));
+say {$out} gp_generate(qw(_marpa_b_and_node_symbol Marpa_And_Node_ID and_node_id));
+say {$out} gp_generate(qw(_marpa_b_or_node_and_count Marpa_Or_Node_ID or_node_id));
+say {$out} gp_generate(qw(_marpa_b_or_node_first_and Marpa_Or_Node_ID ordinal));
+say {$out} gp_generate(qw(_marpa_b_or_node_irl Marpa_Or_Node_ID ordinal));
+say {$out} gp_generate(qw(_marpa_b_or_node_is_semantic Marpa_Or_Node_ID or_node_id));
+say {$out} gp_generate(qw(_marpa_b_or_node_is_whole Marpa_Or_Node_ID or_node_id));
+say {$out} gp_generate(qw(_marpa_b_or_node_last_and Marpa_Or_Node_ID ordinal));
+say {$out} gp_generate(qw(_marpa_b_or_node_origin Marpa_Or_Node_ID ordinal));
+say {$out} gp_generate(qw(_marpa_b_or_node_position Marpa_Or_Node_ID ordinal));
+say {$out} gp_generate(qw(_marpa_b_or_node_set Marpa_Or_Node_ID ordinal));
+say {$out} gp_generate(qw(_marpa_b_top_or_node));
+

@@ -1,5 +1,5 @@
 #!perl
-# Copyright 2013 Jeffrey Kegler
+# Copyright 2014 Jeffrey Kegler
 # This file is part of Marpa::R3.  Marpa::R3 is free software: you can
 # redistribute it and/or modify it under the terms of the GNU Lesser
 # General Public License as published by the Free Software Foundation,
@@ -21,13 +21,14 @@ use 5.010;
 use strict;
 use warnings;
 
-use Test::More tests => 54;
+use Test::More tests => 72;
 use English qw( -no_match_vars );
 use lib 'inc';
 use Marpa::R3::Test;
 use Marpa::R3;
 
 my $source_template = <<'END_OF_SOURCE';
+:default ::= action => do_list
 :start       ::= Number
 Number       ::= number   # If I add '+' or '*' it will work...
 %QUANTIFIER%
@@ -40,20 +41,11 @@ END_OF_SOURCE
 (my $source_plus = $source_template) =~ s/ %QUANTIFIER% / + /xms;
 (my $source_star = $source_template) =~ s/ %QUANTIFIER% / * /xms;
 
-my @common_args = (
-    action_object  => 'My_Actions',
-    default_action => 'do_list',
-);
-my $grammar_bare =
-    Marpa::R3::Scanless::G->new( { @common_args, source => \$source_bare } );
-my $grammar_plus =
-    Marpa::R3::Scanless::G->new( { @common_args, source => \$source_plus } );
-my $grammar_star =
-    Marpa::R3::Scanless::G->new( { @common_args, source => \$source_star } );
+my $grammar_bare = Marpa::R3::Scanless::G->new( { source => \$source_bare } );
+my $grammar_plus = Marpa::R3::Scanless::G->new( { source => \$source_plus } );
+my $grammar_star = Marpa::R3::Scanless::G->new( { source => \$source_star } );
 
 package My_Actions;
-our $SELF;
-sub new { return $SELF }
 sub do_list {
     shift;
     return join " ", @_;
@@ -61,10 +53,10 @@ sub do_list {
 
 sub show_last_expression {
     my ($self) = @_;
-    my $recce = $self->{recce};
-    my ( $start, $end ) = $recce->last_completed_range('Number');
-    return if not defined $start;
-    my $last_expression = $recce->range_to_string( $start, $end );
+    my $slr = $self->{slr};
+    my ( $start, $end ) = $slr->last_completed_range('Number');
+    return '[none]' if not defined $start;
+    my $last_expression = $slr->range_to_string( $start, $end );
     return $last_expression;
 } ## end sub show_last_expression
 
@@ -74,26 +66,38 @@ sub my_parser {
     my ( $grammar, $string ) = @_;
 
     my $self = bless { grammar => $grammar }, 'My_Actions';
-    local $My_Actions::SELF = $self;
 
-    my $recce = Marpa::R3::Scanless::R->new( { grammar => $grammar } );
-    $self->{recce} = $recce;
+    my $slr = Marpa::R3::Scanless::R->new( { grammar => $grammar } );
+    $self->{slr} = $slr;
     my ( $parse_value, $parse_status, $last_expression );
 
-    if ( not defined eval { $recce->read(\$string); 1 } ) {
-        my $abbreviated_error = $EVAL_ERROR;
-        chomp $abbreviated_error;
-        $abbreviated_error =~ s/\n.*//xms;
-        $abbreviated_error =~ s/^Error \s+ in \s+ string_read: \s+ //xms;
-        return 'No parse', $abbreviated_error, $self->show_last_expression();
-    }
-    my $value_ref = $recce->value();
+    my $eval_ok = eval { $slr->read( \$string ); 1; };
+    my $eval_error = $EVAL_ERROR;
+
+# Marpa::R3::Display
+# name: $slr->exhausted example
+
+    my $exhausted_status = $slr->exhausted();
+
+# Marpa::R3::Display::End
+
+    if ( not $eval_ok ) {
+        chomp $eval_error;
+        $eval_error =~ s/\n.*//xms;
+        return 'No parse', $eval_error, $self->show_last_expression(),
+            $exhausted_status;
+    } ## end if ( not $eval_ok )
+
+    my $value_ref = $slr->value($self);
+
     if ( not defined $value_ref ) {
-        return
-            'No parse', 'Input read to end but no parse',
-            $self->show_last_expression();
-    } ## end if ( not defined $value_ref )
-    return [ return ${$value_ref}, 'Parse OK', 'entire input' ];
+        return 'No parse', 'Input read to end but no parse',
+            $self->show_last_expression(),
+            $exhausted_status;
+    }
+    my $value = ${$value_ref} // '';
+    return $value, 'Parse OK', 'entire input', $exhausted_status;
+
 } ## end sub my_parser
 
 my %grammar_by_type = (
@@ -103,12 +107,13 @@ my %grammar_by_type = (
 );
 
 my @tests_data = (
-    [ 'Bare', '', 'No parse', 'Input read to end but no parse', 'none' ],
-    [ 'Bare', '1', '1', 'Parse OK', 'entire input' ],
+    [ 'Bare', '', 'No parse', 'Input read to end but no parse', '[none]' ],
+    [ 'Bare', '1', '1', 'Parse OK', 'entire input', 1 ],
     [   'Bare', '1 2', 'No parse',
-        'Error in Scanless read: G1 Parse exhausted, but lexemes remain, at position 2', '1'
+        'Error in SLIF parse: Parse exhausted, but lexemes remain, at line 1, column 3',
+        '1', 1
     ],
-    [ 'Plus', '', 'No parse', 'Input read to end but no parse', 'none' ],
+    [ 'Plus', '', 'No parse', 'Input read to end but no parse', '[none]' ],
     [ 'Plus', '1',   '1',        'Parse OK', 'entire input' ],
     [ 'Plus', '1 2', '1 2', 'Parse OK', 'entire input' ],
     [ 'Star', '', '', 'Parse OK', 'entire input' ],
@@ -119,18 +124,30 @@ my @tests_data = (
 for my $trailer ( q{}, q{  } ) {
     for my $test_data (@tests_data) {
         my ( $type, $test_string, $expected_value, $expected_result,
-            $expected_last_expression )
+            $expected_last_expression, $expected_exhaustion_status )
             = @{$test_data};
         $test_string .= $trailer;
-        my ( $actual_value, $actual_result, $actual_last_expression ) =
+        my ( $actual_value, $actual_result, $actual_last_expression, $actual_exhaustion_status ) =
             my_parser( $grammar_by_type{$type}, $test_string );
-        $actual_last_expression //= 'none';
         Test::More::is( $actual_value, $expected_value,
             qq{$type: Value of "$test_string"} );
         Test::More::is( $actual_result, $expected_result,
-            qq{%type: Result of "$test_string"} );
+            qq{$type: Result of "$test_string"} );
         Test::More::is( $actual_last_expression, $expected_last_expression,
             qq{$type: Last expression found in "$test_string"} );
+        if ($actual_exhaustion_status) {
+            if (not $expected_exhaustion_status) {
+                Test::More::fail(qq{$type: exhausted for "$test_string", but should not be});
+            } else {
+                Test::More::pass(qq{$type: exhausted for "$test_string"});
+            }
+        } else {
+            if ($expected_exhaustion_status) {
+                Test::More::fail(qq{$type: not exhausted for "$test_string", but should be});
+            } else {
+                Test::More::pass(qq{$type: not exhausted for "$test_string"});
+            }
+        }
     } ## end for my $test_data (@tests_data)
 } ## end for my $trailer ( q{}, q{  } )
 

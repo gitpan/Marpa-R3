@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-# Copyright 2013 Jeffrey Kegler
+# Copyright 2014 Jeffrey Kegler
 # This file is part of Marpa::R3.  Marpa::R3 is free software: you can
 # redistribute it and/or modify it under the terms of the GNU Lesser
 # General Public License as published by the Free Software Foundation,
@@ -29,7 +29,7 @@ sub usage
 }
 
 my $help_flag              = 0;
-my @avoid_whitespace_flags = qw(comment yes no);
+my $allowed_avoid_whitespace_flags = { map { ( $_, 1) } qw(comment yes no) };
 my $avoid_whitespace_flag  = 'yes';
 local $main::ADDED_TAG_COMMENT_FLAG = 1;
 my $ws_ok_before_end_tag_flag = 0;
@@ -57,10 +57,11 @@ usage()
     'trace-values' => \$trace_values_flag,
     );
 usage() if $help_flag or scalar @ARGV > 1;
-if ( not $avoid_whitespace_flag ~~ \@avoid_whitespace_flags ) {
+
+if ( not $allowed_avoid_whitespace_flags->{$avoid_whitespace_flag} ) {
     die "Bad avoid-whitespace flag\n",
         'avoid-whitespace must be one of the following: ', join q{ },
-        @avoid_whitespace_flags;
+        keys %{$allowed_avoid_whitespace_flags};
 }
 
 my $locator = shift;
@@ -68,7 +69,7 @@ my $document;
 GET_DOCUMENT: {
     if ( not defined $locator ) {
         local $RS = undef;
-	## no critic(InputOutput::ProhibitExplicitStdin)
+        ## no critic(InputOutput::ProhibitExplicitStdin)
         $document = <STDIN>;
         last GET_DOCUMENT;
     }
@@ -411,7 +412,7 @@ sub do_pre {
 
     if ( not defined $start_tag ) {
         push @new_line_data, [ 'msg: missing pre start tag', 0 ]
-	   if $main::ADDED_TAG_COMMENT_FLAG;
+           if $main::ADDED_TAG_COMMENT_FLAG;
         push @new_line_data, [ 'start tag', 0, '<pre>' ];
     }
 
@@ -420,7 +421,7 @@ sub do_pre {
 
     if ( not defined $end_tag ) {
         push @new_line_data, [ 'end tag', 0, '</pre>' ]
-	   if $main::ADDED_TAG_COMMENT_FLAG;
+           if $main::ADDED_TAG_COMMENT_FLAG;
         push @new_line_data, [ 'msg: missing pre end tag', 0 ];
     }
     return \@new_line_data;
@@ -530,3 +531,5 @@ if ($dump_config_flag or $dump_AHFA_flag) {
 print post_process($value_ref) or die "print failed: $ERRNO";
 
 exit 0;
+
+# vim: set expandtab shiftwidth=4:

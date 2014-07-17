@@ -1,4 +1,4 @@
-# Copyright 2013 Jeffrey Kegler
+# Copyright 2014 Jeffrey Kegler
 # This file is part of Marpa::R3.  Marpa::R3 is free software: you can
 # redistribute it and/or modify it under the terms of the GNU Lesser
 # General Public License as published by the Free Software Foundation,
@@ -14,15 +14,25 @@
 # http://www.gnu.org/licenses/.
 
 # Temporary
+^ada[.]before$
+^sl_ada[.]t$
+^sl_product[.]t$
+^meta_to_asf[.]pl$
+^marpa-problem[.]pl$
+^product2[.]t$
+^code[.]errs$
+^dist[.]errs$
+^modulo_AHFA[.]out$
 
 # Permanent
+
+# LC_ALL=C sort
 /[.]gdb_history$
 /[.]gitignore$
 /errs$
 /junk$
 [.]DS_Store$
 [/]nogit_
-\.a$
 \.la$
 \.lo$
 \.o$
@@ -37,6 +47,7 @@
 ^Makefile$
 ^Marpa-R3-\d+.\d{3}_\d{3}/
 ^Marpa-R3-\d+.\d{6}/
+^TOUCH$
 ^[.]gdb_history$
 ^[.]gdbinit$
 ^[.]gitattributes$
@@ -51,6 +62,10 @@
 ^author.t/perlcritic.errs$
 ^author.t/tidy.errs$
 ^blib/
+^blib_shared/
+^core/cf/LIBMARPA_MODE$
+^core/stage/
+^dovg[.]log$
 ^errs$
 ^etc/track[.]list
 ^hide/
@@ -73,48 +88,10 @@
 ^lib/Marpa/.*\.xsh
 ^lib/Marpa/R3/Installed.pm$
 ^lib/Marpa/R3/Version.pm$
+^lib/Marpa/R3/meta/metag[-]g[123456789][.]pl
+^lib/Marpa/R3/meta/metag[.]pl
 ^lib/Marpa/R3\.c
 ^lib/Marpa/R3\.xs
-^libmarpa/dev/api[.]texi[~]$
-^libmarpa/dev/codes[.]c
-^libmarpa/dev/codes[.]h
-^libmarpa/dev/fragments/
-^libmarpa/dev/internal[.]texi[~]$
-^libmarpa/dev/marpa.log
-^libmarpa/dev/marpa.scn
-^libmarpa/dev/marpa[.]c
-^libmarpa/dev/marpa[.]h
-^libmarpa/dev/marpa[.]idx
-^libmarpa/dev/marpa[.]tex
-^libmarpa/dev/marpa[.]toc
-^libmarpa/dev/marpa_api[.]h
-^libmarpa/dev/marpa_util[.]h
-^libmarpa/dev/old_pod/Algorithm[.]pod
-^libmarpa/dev/old_pod/Implementation[.]pod
-^libmarpa/dev/private[.]h$
-^libmarpa/doc/
-^libmarpa/libmarpa[-]doc[.]tar$
-^libmarpa/orig/
-^libmarpa/stage/
-^libmarpa/test/dev/Makefile[.]in$
-^libmarpa/test/dev/aclocal[.]m4$
-^libmarpa/test/dev/autom4te.cache/
-^libmarpa/test/dev/autoscan.log
-^libmarpa/test/dev/config[.]guess$
-^libmarpa/test/dev/config[.]sub$
-^libmarpa/test/dev/configure$
-^libmarpa/test/dev/depcomp$
-^libmarpa/test/dev/install-sh$
-^libmarpa/test/dev/ltmain[.]sh$
-^libmarpa/test/dev/m4/libtool[.]m4$
-^libmarpa/test/dev/m4/ltoptions[.]m4$
-^libmarpa/test/dev/m4/ltsugar[.]m4$
-^libmarpa/test/dev/m4/ltversion[.]m4$
-^libmarpa/test/dev/m4/lt~obsolete[.]m4$
-^libmarpa/test/dev/missing$
-^libmarpa/test/libmarpa/
-^libmarpa/test/libmarpa[.]tar$
-^libmarpa/test/work/
 ^libmarpa_build/
 ^nogit
 ^nogit/
@@ -125,5 +102,3 @@
 ^pod2htmi.tmp
 ^pperl/Marpa/R3/Perl/Installed[.]pm$
 ^pperl/Marpa/R3/Perl/Version[.]pm$
-^lib/Marpa/R3/meta/metag[-]g[123456789][.]pl
-^lib/Marpa/R3/meta/metag[.]pl

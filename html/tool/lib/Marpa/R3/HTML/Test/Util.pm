@@ -1,4 +1,4 @@
-# Copyright 2013 Jeffrey Kegler
+# Copyright 2014 Jeffrey Kegler
 # This file is part of Marpa::R3.  Marpa::R3 is free software: you can
 # redistribute it and/or modify it under the terms of the GNU Lesser
 # General Public License as published by the Free Software Foundation,
@@ -15,8 +15,7 @@
 
 package Marpa::R3::HTML::Test::Util;
 
-# The original of this code was copied from Andy Lester's Ack
-# package
+# This code was based on study of the test suite in Andy Lester's Ack package
 
 use 5.010;
 use strict;
@@ -28,55 +27,33 @@ use File::Spec;
 use Fatal qw(unlink open close);
 use Carp;
 use CPAN::Version;
-
-# capture stderr output into this file
-my $catcherr_file = 'stderr.log';
+use Cwd;
 
 sub is_win32 {
     return $OSNAME =~ /Win32/xms;
 }
 
-# capture-stderr is executing ack and storing the stderr output in
-# $catcherr_file in a portable way.
-#
-# The quoting of command line arguments depends on the OS
-sub build_command_line {
-    my (@args) = @_;
-
-    if ( is_win32() ) {
-        for (@args) {
-            s/(\\+)$/$1$1/xms;    # Double all trailing backslashes
-            s/"/\\"/gxms;         # Backslash all quotes
-            $_ = qq{"$_"};
-        }
-    } ## end if ( is_win32() )
-    else {
-        @args = map { quotemeta $_ } @args;
-    }
-
-    return "$EXECUTABLE_NAME -Ilib @args";
-
-} ## end sub build_command_line
+sub quotearg {
+    my ($arg) = @_;
+    return quotemeta $arg if not is_win32();
+    $arg =~ s/(\\+)$/$1$1/xms;    # Double all trailing backslashes
+    $arg =~ s/"/\\"/gxms;         # Backslash all quotes
+    return qq{"$arg"};
+} ## end sub quotearg
 
 sub run_command {
-    my ( $command, @args ) = @_;
+    my (@args)     = @_;
 
-    my ( $stdout, $stderr ) = run_with_stderr( $command, @args );
+    my $blib = $ENV{MARPA_TEST_BLIB};
+    my $current_wd = Cwd::getcwd();
+    $blib //= $current_wd;
+    my $blib_arg   = '-Mblib=' . quotearg($blib);
 
-    Test::More::is( $stderr, q{},
-        "Should have no output to stderr: $command @args" )
-        or Test::More::diag("STDERR:\n$stderr");
-
-    return $stdout;
-} ## end sub run_command
-
-sub run_with_stderr {
-    my @args = @_;
-
-    my $cmd = build_command_line(@args);
+    # my $command = join q{ }, $EXECUTABLE_NAME, $blib_arg, map { quotearg($_) } @args;
+    my $command = join q{ }, $EXECUTABLE_NAME, map { quotearg($_) } @args;
 
     ## no critic (InputOutput::ProhibitBacktickOperators)
-    my $stdout = `$cmd`;
+    my $stdout = `$command`;
     ## use critic
 
     my ( $sig, $core, $rc ) = (
@@ -85,9 +62,8 @@ sub run_with_stderr {
         ( $CHILD_ERROR >> 8 ),
     );
 
-    return ( $stdout, q{}, $rc );
-
-} ## end sub run_with_stderr
+    return $stdout;
+} ## end sub run_command
 
 # This method must be called *BEFORE* any test plan is
 # written -- it creates its own test plan
@@ -105,15 +81,15 @@ sub load_or_skip_all {
     use lib 'config';
     $eval_result = eval { require Marpa::R3::Config; 1 };
     if ( !$eval_result ) {
-	Test::More::plan tests => 1;
-	Test::More::diag($EVAL_ERROR);
-	Test::More::fail("Could not load Marpa::R3::Config\n");
+        Test::More::plan tests => 1;
+        Test::More::diag($EVAL_ERROR);
+        Test::More::fail("Could not load Marpa::R3::Config\n");
         exit 0;
     } ## end if ( !$eval_result )
     my $version_wanted = $Marpa::R3::VERSION_FOR_CONFIG{$module_name};
     if ( not defined $version_wanted ) {
-	Test::More::plan tests => 1;
-	Test::More::fail("$module_name is not known to Marpa::R3");
+        Test::More::plan tests => 1;
+        Test::More::fail("$module_name is not known to Marpa::R3");
         exit 0;
     }
     my $module_version = eval q{$} . $module_name . '::VERSION';
@@ -126,3 +102,5 @@ sub load_or_skip_all {
 } ## end sub load_or_skip_all
 
 1;
+
+# vim: set expandtab shiftwidth=4:

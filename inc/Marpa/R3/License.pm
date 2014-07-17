@@ -1,4 +1,4 @@
-# Copyright 2013 Jeffrey Kegler
+# Copyright 2014 Jeffrey Kegler
 # This file is part of Marpa::R3.  Marpa::R3 is free software: you can
 # redistribute it and/or modify it under the terms of the GNU Lesser
 # General Public License as published by the Free Software Foundation,
@@ -24,9 +24,17 @@ use Fatal qw(open close read);
 use File::Spec;
 use Text::Diff ();
 
-my $copyright_line = q{Copyright 2013 Jeffrey Kegler};
+my $copyright_line = q{Copyright 2014 Jeffrey Kegler};
 ( my $copyright_line_in_tex = $copyright_line )
     =~ s/ ^ Copyright \s /Copyright \\copyright\\ /xms;
+
+my $closed_license = "$copyright_line\n" . <<'END_OF_STRING';
+This document is not part of the Marpa or Marpa::R3 source.
+Although it may be included with a Marpa distribution that
+is under an open source license, this document is
+not under that open source license.
+Jeffrey Kegler retains full rights.
+END_OF_STRING
 
 my $license_body = <<'END_OF_STRING';
 This file is part of Marpa::R3.  Marpa::R3 is free software: you can
@@ -45,6 +53,8 @@ http://www.gnu.org/licenses/.
 END_OF_STRING
 
 my $license = "$copyright_line\n$license_body";
+my $libmarpa_license = $license;
+$libmarpa_license =~ s/Marpa::R3/Libmarpa/gxms;
 
 # License, redone as Tex input
 my $license_in_tex =
@@ -58,7 +68,7 @@ version 3 should be in a file named "COPYING.LESSER".
 END_OF_STRING
 
 my $texi_copyright = <<'END_OF_TEXI_COPYRIGHT';
-Copyright @copyright{} 2013 Jeffrey Kegler.
+Copyright @copyright{} 2014 Jeffrey Kegler.
 END_OF_TEXI_COPYRIGHT
 
 my $fdl_license = <<'END_OF_FDL_LANGUAGE';
@@ -97,9 +107,12 @@ sub c_comment {
     return qq{/*\n$text */\n};
 } ## end sub c_comment
 
-my $c_license          = c_comment($license);
+my $c_license          = c_comment($libmarpa_license);
+my $xs_license          = c_comment($license);
 my $r3_hash_license    = hash_comment($license);
+my $libmarpa_hash_license    = hash_comment($libmarpa_license);
 my $xsh_hash_license    = hash_comment($license, q{ #});
+my $tex_closed_license = hash_comment( $closed_license, q{%} );
 my $tex_license        = hash_comment( $license, q{%} );
 my $tex_cc_a_nd_license = hash_comment( $cc_a_nd_license, q{%} );
 my $indented_license   = $license;
@@ -135,27 +148,25 @@ END_OF_STRING
 
 my %GNU_file = (
     map {
-    (   'libmarpa/stage/' . $_, 1,
-        'libmarpa/test/dev/' . $_,   1,
-        'libmarpa_dist/' . $_,   1,
-        'libmarpa_doc_dist/' . $_,   1
+    (
+        'core/read_only/' . $_,   1,
         )
     } qw(
-	aclocal.m4
-	config.guess
-	config.sub
-	configure
-	depcomp
-	mdate-sh
-	texinfo.tex
-	ltmain.sh
-	m4/libtool.m4
-	m4/ltoptions.m4
-	m4/ltsugar.m4
-	m4/ltversion.m4
-	m4/lt~obsolete.m4
-	missing
-	Makefile.in
+        aclocal.m4
+        config.guess
+        config.sub
+        configure
+        depcomp
+        mdate-sh
+        texinfo.tex
+        ltmain.sh
+        m4/libtool.m4
+        m4/ltoptions.m4
+        m4/ltsugar.m4
+        m4/ltversion.m4
+        m4/lt~obsolete.m4
+        missing
+        Makefile.in
     )
 );;
 
@@ -245,63 +256,63 @@ sub check_tag {
 } ## end sub check_tag
 
 my %files_by_type = (
+    'COPYING.LESSER' => \&ignored,    # GNU license text, leave it alone
     'LICENSE' => \&license_problems_in_license_file,
     'META.json' =>
         \&ignored,    # not source, and not clear how to add license at top
     'META.yml' =>
         \&ignored,    # not source, and not clear how to add license at top
-    'ppport.h'       => \&ignored,    # copied from CPAN, just leave it alone
-    'COPYING.LESSER' => \&ignored,    # GNU license text, leave it alone
-    'etc/copy_from_stage'              => \&license_problems_in_perl_file,
-    'html/script/marpa_r3_html_fmt'    => \&license_problems_in_perl_file,
-    'html/script/marpa_r3_html_score'  => \&license_problems_in_perl_file,
-    'html/t/no_tang.html'              => \&ignored,
-    'html/t/test.html'                 => \&ignored,
-    'html/t/fmt_t_data/expected1.html' => \&ignored,
-    'html/t/fmt_t_data/expected2.html' => \&ignored,
-    'html/t/fmt_t_data/input1.html'    => \&trivial,
-    'html/t/fmt_t_data/input2.html'    => \&trivial,
-    'html/t/fmt_t_data/score_expected1.html' => \&trivial,
-    'html/t/fmt_t_data/score_expected2.html' => \&trivial,
-    'Makefile.PL'                            => \&trivial,
-    'libmarpa_dist/VERSION'                       => \&trivial,
-    'libmarpa/dev/README'                    => \&trivial,
-    'libmarpa/dev/dist/VERSION.in'           => \&trivial,
-    'libmarpa_dist/VERSION.in'               => \&trivial,
-    'libmarpa/dev/api.texi'                 => \&license_problems_in_fdl_file,
-    'libmarpa/dev/internal.texi'            => \&license_problems_in_fdl_file,
-    'libmarpa_doc_dist/api.texi'            => \&license_problems_in_fdl_file,
-    'libmarpa_doc_dist/internal.texi'       => \&license_problems_in_fdl_file,
-    'libmarpa_doc_dist/version_i.texi'      => \&trivial,
-    'libmarpa_doc_dist/version.texi'        => \&trivial,
-    'libmarpa/dev/copyright_page_license.w' => \&copyright_page,
-    'libmarpa/dev/cwebmac.tex' =>
-        \&ignored,    # originally from Cweb, leave it alone
-
-    ## GNU license text, leave it alone
-    'libmarpa_doc_dist/fdl-1.3.texi'      => \&ignored,
-    'libmarpa/dev/doc_dist/fdl-1.3.texi'  => \&ignored,
-    'libmarpa/dev/doc_dist/lgpl-3.0.texi' => \&ignored,
-    'libmarpa_doc_dist/lgpl-3.0.texi'     => \&ignored,
-
-    'libmarpa/stage/config.h.in' =>
-        check_tag( 'Generated from configure.ac by autoheader', 250 ),
-    'libmarpa/test/Makefile'            => \&trivial,
-    'libmarpa/test/README'              => \&trivial,
-    'libmarpa/test/dev/install-sh'      => \&check_X_copyright,
     'README'                            => \&trivial,
+    'INSTALL'                            => \&trivial,
     'TODO'                              => \&trivial,
     'author.t/accept_tidy'              => \&trivial,
     'author.t/critic1'                  => \&trivial,
     'author.t/perltidyrc'               => \&trivial,
     'author.t/spelling_exceptions.list' => \&trivial,
     'author.t/tidy1'                    => \&trivial,
-    't/etc/wall_proof.txt'              => \&cc_a_nd,
+    'etc/dovg.sh'                       => \&trivial,
+    'etc/compile_for_debug.sh'          => \&trivial,
+    'etc/reserved_check.sh'             => \&trivial,
+    'html/script/marpa_r3_html_fmt'    => gen_license_problems_in_perl_file(),
+    'html/script/marpa_r3_html_score'  => gen_license_problems_in_perl_file(),
+    'html/t/fmt_t_data/expected1.html' => \&ignored,
+    'html/t/fmt_t_data/expected2.html' => \&ignored,
+    'html/t/fmt_t_data/input1.html'    => \&trivial,
+    'html/t/fmt_t_data/input2.html'    => \&trivial,
+    'html/t/fmt_t_data/score_expected1.html' => \&trivial,
+    'html/t/fmt_t_data/score_expected2.html' => \&trivial,
+    'html/t/no_tang.html'                    => \&ignored,
+    'html/t/test.html'                       => \&ignored,
+    'core/LOG_DATA'             => \&trivial,
+'core/cf/LIBMARPA_MODE' => \&trivial,
+    'core/read_only/LIB_VERSION'             => \&trivial,
+    'core/read_only/LIB_VERSION.in'          => \&trivial,
+    'core/read_only/Makefile.am' =>
+        gen_license_problems_in_hash_file($libmarpa_hash_license),
+    'core/read_only/configure.ac' =>
+        gen_license_problems_in_hash_file($libmarpa_hash_license),
+    'core/read_only/notes/shared_test.txt' =>
+        gen_license_problems_in_hash_file($libmarpa_hash_license),
+    'core/read_only/Makefile.win32' =>
+        gen_license_problems_in_hash_file($libmarpa_hash_license),
+    'core/read_only/win32/do_config_h.pl' =>
+        gen_license_problems_in_perl_file($libmarpa_hash_license),
+    'etc/my_suppressions' => \&trivial,
+    'xs/ppport.h' => \&ignored,    # copied from CPAN, just leave it alone
+    'core/read_only/README.INSTALL' =>
+        gen_license_problems_in_text_file($libmarpa_hash_license),
+
+    # Leave Pfaff's licensing as is
+    'core/read_only/marpa_tavl.c' => \&ignored,
+    'core/read_only/marpa_tavl.h' => \&ignored,
+
+    # MS .def file -- contents trivial
+    'core/read_only/win32/marpa.def' => \&ignored,
 );
 
 # Common files in the GNU distributions
 for my $distlib (
-    qw(libmarpa/dev/doc_dist libmarpa/dev/dist libmarpa_dist libmarpa_doc_dist)
+    qw(core/read_only)
     )
 {
     $files_by_type{"$distlib/AUTHORS"}   = \&trivial;
@@ -314,7 +325,7 @@ for my $distlib (
     ## GNU standard -- has their license language
     $files_by_type{"$distlib/INSTALL"} = \&ignored;
 
-    $files_by_type{"$distlib/README"}     = \&license_problems_in_text_file;
+    $files_by_type{"$distlib/README"}     = gen_license_problems_in_text_file( $libmarpa_license );
     $files_by_type{"$distlib/stamp-h1"}   = \&trivial;
     $files_by_type{"$distlib/stamp-1"}   = \&trivial;
     $files_by_type{"$distlib/stamp-vti"}   = \&trivial;
@@ -329,7 +340,7 @@ sub file_type {
     return $closure if defined $closure;
     my ( $volume, $dirpart, $filepart ) = File::Spec->splitpath($filename);
     my @dirs = grep {length} File::Spec->splitdir($dirpart);
-    return \&license_problems_in_perl_file
+    return gen_license_problems_in_perl_file()
         if scalar @dirs > 1
             and $dirs[0] eq 'pperl'
             and $filepart =~ /[.]pm\z/xms;
@@ -337,29 +348,33 @@ sub file_type {
 
     # info files are generated -- licensing is in source
     return \&ignored if $filepart =~ /[.]info\z/xms;
-    return \&ignored
-        if scalar @dirs >= 2
-            and $dirs[0] eq 'libmarpa'
-            and $dirs[1] eq 'orig';
     return \&trivial if $filepart eq '.gitignore';
     return \&trivial if $filepart eq '.gitattributes';
     return \&trivial if $filepart eq '.gdbinit';
     return \&check_GNU_copyright
         if $GNU_file{$filename};
-    return \&license_problems_in_perl_file
+    return gen_license_problems_in_perl_file()
         if $filepart =~ /[.] (t|pl|pm|PL) \z /xms;
-    return \&license_problems_in_perl_file
+    return gen_license_problems_in_perl_file()
         if $filepart eq 'typemap';
+    return \&license_problems_in_fdl_file
+        if $filepart eq 'internal.texi';
+    return \&license_problems_in_fdl_file
+        if $filepart eq 'api.texi';
     return \&license_problems_in_pod_file if $filepart =~ /[.]pod \z/xms;
-    return \&license_problems_in_c_file
-        if $filepart =~ /[.] (xs|c|h) \z /xms;
+    return gen_license_problems_in_c_file($xs_license)
+        if $filepart =~ /[.] (xs) \z /xms;
+    return gen_license_problems_in_c_file()
+        if $filepart =~ /[.] (c|h) \z /xms;
     return \&license_problems_in_xsh_file
         if $filepart =~ /[.] (xsh) \z /xms;
-    return \&license_problems_in_c_file
-        if $filepart =~ /[.] (xs|c|h) [.] in \z /xms;
+    return \&license_problems_in_sh_file
+        if $filepart =~ /[.] (sh) \z /xms;
+    return gen_license_problems_in_c_file()
+        if $filepart =~ /[.] (c|h) [.] in \z /xms;
     return \&license_problems_in_tex_file
         if $filepart =~ /[.] (w) \z /xms;
-    return \&license_problems_in_hash_file
+    return gen_license_problems_in_hash_file()
 
 } ## end sub file_type
 
@@ -378,7 +393,8 @@ sub Marpa::R3::License::file_license_problems {
     }
 
     # type eq "text"
-    push @problems, license_problems_in_text_file( $filename, $verbose );
+    my $problems_closure = gen_license_problems_in_text_file();
+    push @problems, $problems_closure->( $filename, $verbose );
     return @problems;
 } ## end sub Marpa::R3::License::file_license_problems
 
@@ -444,32 +460,37 @@ sub license_problems_in_license_file {
     return @problems;
 } ## end sub license_problems_in_license_file
 
-sub license_problems_in_hash_file {
-    my ( $filename, $verbose ) = @_;
-    if ($verbose) {
-        say {*STDERR} "Checking $filename as hash style file" or die "say failed: $ERRNO";
-    }
-    my @problems = ();
-    my $text = slurp_top( $filename, length $r3_hash_license );
-    if ( $r3_hash_license ne ${$text} ) {
-        my $problem = "No license language in $filename (hash style)\n";
+sub gen_license_problems_in_hash_file {
+    my ($license) = @_;
+    $license //= $r3_hash_license;
+    return sub {
+        my ( $filename, $verbose ) = @_;
         if ($verbose) {
-            $problem
-                .= "=== Differences ===\n"
-                . Text::Diff::diff( $text, \$r3_hash_license )
+            say {*STDERR} "Checking $filename as hash style file"
+                or die "say failed: $ERRNO";
+        }
+        my @problems = ();
+        my $text = slurp_top( $filename, length $license );
+        if ( $license ne ${$text} ) {
+            my $problem = "No license language in $filename (hash style)\n";
+            if ($verbose) {
+                $problem
+                    .= "=== Differences ===\n"
+                    . Text::Diff::diff( $text, \$license )
+                    . ( q{=} x 30 );
+            } ## end if ($verbose)
+            push @problems, $problem;
+        } ## end if ( $license ne ${$text} )
+        if ( scalar @problems and $verbose >= 2 ) {
+            my $problem =
+                  "=== license for $filename should be as follows:\n"
+                . $license
                 . ( q{=} x 30 );
-        } ## end if ($verbose)
-        push @problems, $problem;
-    } ## end if ( $r3_hash_license ne ${$text} )
-    if ( scalar @problems and $verbose >= 2 ) {
-        my $problem =
-              "=== license for $filename should be as follows:\n"
-            . $r3_hash_license
-            . ( q{=} x 30 );
-        push @problems, $problem;
-    } ## end if ( scalar @problems and $verbose >= 2 )
-    return @problems;
-} ## end sub license_problems_in_hash_file
+            push @problems, $problem;
+        } ## end if ( scalar @problems and $verbose >= 2 )
+        return @problems;
+    };
+} ## end sub gen_license_problems_in_hash_file
 
 sub license_problems_in_xsh_file {
     my ( $filename, $verbose ) = @_;
@@ -499,27 +520,28 @@ sub license_problems_in_xsh_file {
     return @problems;
 } ## end sub license_problems_in_xsh_file
 
-sub license_problems_in_perl_file {
-    my ( $filename, $type, $verbose ) = @_;
+sub license_problems_in_sh_file {
+    my ( $filename, $verbose ) = @_;
     if ($verbose) {
-        say {*STDERR} "Checking $filename as $type perl file" or die "say failed: $ERRNO";
+        say {*STDERR} "Checking $filename as sh hash style file"
+            or die "say failed: $ERRNO";
     }
-    $verbose //= 0;
     my @problems = ();
-    my $text = slurp_top( $filename, 132 + length $r3_hash_license );
-
-    # Delete hash bang line, if present
-    ${$text} =~ s/\A [#][!] [^\n] \n//xms;
-    if ( 0 > index ${$text}, $r3_hash_license ) {
-        my $problem = "No license language in $filename (perl style)\n";
+    $DB::single = 1;
+    my $ref_text = slurp_top( $filename, 256 + length $r3_hash_license );
+    my $text = ${$ref_text};
+    $text =~ s/ \A [#][!] [^\n]* \n//xms;
+    $text = substr $text, 0, length $r3_hash_license;
+    if ( $r3_hash_license ne $text ) {
+        my $problem = "No license language in $filename (sh hash style)\n";
         if ($verbose) {
             $problem
                 .= "=== Differences ===\n"
-                . Text::Diff::diff( $text, \$r3_hash_license )
+                . Text::Diff::diff( \$text, \$r3_hash_license )
                 . ( q{=} x 30 );
         } ## end if ($verbose)
         push @problems, $problem;
-    } ## end if ( 0 > index ${$text}, $r3_hash_license )
+    }
     if ( scalar @problems and $verbose >= 2 ) {
         my $problem =
               "=== license for $filename should be as follows:\n"
@@ -528,36 +550,78 @@ sub license_problems_in_perl_file {
         push @problems, $problem;
     } ## end if ( scalar @problems and $verbose >= 2 )
     return @problems;
-} ## end sub license_problems_in_perl_file
+}
 
-sub license_problems_in_c_file {
-    my ( $filename, $verbose ) = @_;
-    if ($verbose) {
-        say {*STDERR} "Checking $filename as C file" or die "say failed: $ERRNO";
-    }
-    my @problems = ();
-    my $text = slurp_top( $filename, 500 + length $c_license );
-    ${$text}
-        =~ s{ \A [/][*] \s+ DO \s+ NOT \s+ EDIT \s+ DIRECTLY [^\n]* \n }{}xms;
-    if ( ( index ${$text}, $c_license ) < 0 ) {
-        my $problem = "No license language in $filename (C style)\n";
+
+sub gen_license_problems_in_perl_file {
+    my ($license) = @_;
+    my $perl_license = $license // $r3_hash_license;
+    return sub {
+        my ( $filename, $verbose ) = @_;
         if ($verbose) {
-            $problem
-                .= "=== Differences ===\n"
-                . Text::Diff::diff( $text, \$c_license )
+            say {*STDERR} "Checking $filename as perl file"
+                or die "say failed: $ERRNO";
+        }
+        $verbose //= 0;
+        my @problems = ();
+        my $text = slurp_top( $filename, 132 + length $perl_license );
+
+        # Delete hash bang line, if present
+        ${$text} =~ s/\A [#][!] [^\n] \n//xms;
+        if ( 0 > index ${$text}, $perl_license ) {
+            my $problem = "No license language in $filename (perl style)\n";
+            if ($verbose) {
+                $problem
+                    .= "=== Differences ===\n"
+                    . Text::Diff::diff( $text, \$perl_license )
+                    . ( q{=} x 30 );
+            } ## end if ($verbose)
+            push @problems, $problem;
+        } ## end if ( 0 > index ${$text}, $perl_license )
+        if ( scalar @problems and $verbose >= 2 ) {
+            my $problem =
+                  "=== license for $filename should be as follows:\n"
+                . $perl_license
                 . ( q{=} x 30 );
-        } ## end if ($verbose)
-        push @problems, $problem;
-    } ## end if ( ( index ${$text}, $c_license ) < 0 )
-    if ( scalar @problems and $verbose >= 2 ) {
-        my $problem =
-              "=== license for $filename should be as follows:\n"
-            . $c_license
-            . ( q{=} x 30 );
-        push @problems, $problem;
-    } ## end if ( scalar @problems and $verbose >= 2 )
-    return @problems;
-} ## end sub license_problems_in_c_file
+            push @problems, $problem;
+        } ## end if ( scalar @problems and $verbose >= 2 )
+        return @problems;
+    };
+} ## end sub gen_license_problems_in_perl_file
+
+sub gen_license_problems_in_c_file {
+    my ($license) = @_;
+    $license //= $c_license;
+    return sub {
+        my ( $filename, $verbose ) = @_;
+        if ($verbose) {
+            say {*STDERR} "Checking $filename as C file"
+                or die "say failed: $ERRNO";
+        }
+        my @problems = ();
+        my $text = slurp_top( $filename, 500 + length $license );
+        ${$text}
+            =~ s{ \A [/][*] \s+ DO \s+ NOT \s+ EDIT \s+ DIRECTLY [^\n]* \n }{}xms;
+        if ( ( index ${$text}, $license ) < 0 ) {
+            my $problem = "No license language in $filename (C style)\n";
+            if ($verbose) {
+                $problem
+                    .= "=== Differences ===\n"
+                    . Text::Diff::diff( $text, \$license )
+                    . ( q{=} x 30 );
+            } ## end if ($verbose)
+            push @problems, $problem;
+        } ## end if ( ( index ${$text}, $license ) < 0 )
+        if ( scalar @problems and $verbose >= 2 ) {
+            my $problem =
+                  "=== license for $filename should be as follows:\n"
+                . $license
+                . ( q{=} x 30 );
+            push @problems, $problem;
+        } ## end if ( scalar @problems and $verbose >= 2 )
+        return @problems;
+    };
+} ## end sub gen_license_problems_in_c_line
 
 sub license_problems_in_tex_file {
     my ( $filename, $verbose ) = @_;
@@ -588,10 +652,38 @@ sub license_problems_in_tex_file {
     return @problems;
 } ## end sub license_problems_in_tex_file
 
+# This was the license for the lyx documents
+# For the Latex versions, I switched to CC-A_ND
+sub tex_closed {
+    my ( $filename, $verbose ) = @_;
+    my @problems = ();
+    my $text = slurp_top( $filename, 400 + length $tex_closed_license );
+
+    if ( ( index ${$text}, $tex_closed_license ) < 0 ) {
+        my $problem = "No license language in $filename (TeX style)\n";
+        if ($verbose) {
+            $problem
+                .= "=== Differences ===\n"
+                . Text::Diff::diff( $text, \$tex_closed_license )
+                . ( q{=} x 30 );
+        } ## end if ($verbose)
+        push @problems, $problem;
+    } ## end if ( ( index ${$text}, $tex_closed_license ) < 0 )
+    if ( scalar @problems and $verbose >= 2 ) {
+        my $problem =
+              "=== license for $filename should be as follows:\n"
+            . $tex_closed_license
+            . ( q{=} x 30 );
+        push @problems, $problem;
+    } ## end if ( scalar @problems and $verbose >= 2 )
+    return @problems;
+} ## end sub tex_closed
+
+# Note!!!  This license is not Debian-compatible!!!
 sub tex_cc_a_nd {
     my ( $filename, $verbose ) = @_;
     my @problems = ();
-    my $text     = slurp($filename);
+    my $text = slurp( $filename );
 
 # say "=== Looking for\n", $tex_cc_a_nd_license, "===";
 # say "=== Looking in\n", ${$text}, "===";
@@ -600,24 +692,24 @@ sub tex_cc_a_nd {
     if ( ( index ${$text}, $tex_cc_a_nd_license ) != 0 ) {
         my $problem = "No CC-A-ND language in $filename (TeX style)\n";
         push @problems, $problem;
-    }
+    } ## end if ( ( index ${$text}, $tex_cc_a_nd_license ) != 0 )
     if ( ( index ${$text}, $cc_a_nd_thanks ) < 0 ) {
         my $problem = "No CC-A-ND LaTeX thanks in $filename\n";
         push @problems, $problem;
-    }
+    } ## end if ( ( index ${$text}, $tex_cc_a_nd_license ) != 0 )
     if ( ( index ${$text}, $copyright_line_in_tex ) < 0 ) {
         my $problem = "No copyright line in $filename\n";
         push @problems, $problem;
-    }
+    } ## end if ( ( index ${$text}, $tex_cc_a_nd_license ) != 0 )
     if ( scalar @problems and $verbose >= 2 ) {
         my $problem =
               "=== license for $filename should be as follows:\n"
-            . $tex_cc_a_nd_license
+            . $tex_closed_license
             . ( q{=} x 30 );
         push @problems, $problem;
     } ## end if ( scalar @problems and $verbose >= 2 )
     return @problems;
-} ## end sub tex_cc_a_nd
+} ## end sub tex_closed
 
 sub cc_a_nd {
     my ( $filename, $verbose ) = @_;
@@ -681,7 +773,8 @@ sub license_problems_in_pod_file {
 
     # Pod files are Perl files, and should also have the
     # license statement at the start of the file
-    my @problems = license_problems_in_perl_file( $filename, $verbose );
+    my $closure = gen_license_problems_in_perl_file();
+    my @problems = $closure->( $filename, $verbose );
 
     my $text = ${ slurp($filename) };
     if ( $text =~ m/ ^ [=]head1 \s+ Copyright \s+ and \s+ License /xmsp ) {
@@ -706,8 +799,8 @@ sub license_problems_in_pod_file {
             "=== licensing pod section for $filename should be as follows:\n"
             . $pod_section
             . ( q{=} x 30 )
-	    . "\n"
-	    ;
+            . "\n"
+            ;
         push @problems, $problem;
     } ## end if ( scalar @problems and $verbose >= 2 )
     return @problems;
@@ -715,30 +808,34 @@ sub license_problems_in_pod_file {
 
 # In "Text" files, just look for the full language.
 # No need to comment it out.
-sub license_problems_in_text_file {
-    my ( $filename, $verbose ) = @_;
-    if ($verbose) {
-        say {*STDERR} "Checking $filename as text file" or die "say failed: $ERRNO";
-    }
-    my @problems = ();
-    my $text     = slurp_top($filename);
-    if ( ( index ${$text}, $license ) < 0 ) {
-        my $problem = "Full language missing in text file $filename\n";
+sub gen_license_problems_in_text_file {
+    my ($license) = @_;
+    return sub {
+        my ( $filename, $verbose ) = @_;
         if ($verbose) {
-            $problem .= "\nMissing license language:\n"
-                . Text::Diff::diff( $text, \$license );
+            say {*STDERR} "Checking $filename as text file"
+                or die "say failed: $ERRNO";
         }
-        push @problems, $problem;
-    } ## end if ( ( index ${$text}, $license ) < 0 )
-    if ( scalar @problems and $verbose >= 2 ) {
-        my $problem =
-            "=== licensing pod section for $filename should be as follows:\n"
-            . $pod_section
-            . ( q{=} x 30 );
-        push @problems, $problem;
-    } ## end if ( scalar @problems and $verbose >= 2 )
-    return @problems;
-} ## end sub license_problems_in_text_file
+        my @problems = ();
+        my $text     = slurp_top($filename);
+        if ( ( index ${$text}, $license ) < 0 ) {
+            my $problem = "Full language missing in text file $filename\n";
+            if ($verbose) {
+                $problem .= "\nMissing license language:\n"
+                    . Text::Diff::diff( $text, \$license );
+            }
+            push @problems, $problem;
+        } ## end if ( ( index ${$text}, $license ) < 0 )
+        if ( scalar @problems and $verbose >= 2 ) {
+            my $problem =
+                "=== licensing pod section for $filename should be as follows:\n"
+                . $pod_section
+                . ( q{=} x 30 );
+            push @problems, $problem;
+        } ## end if ( scalar @problems and $verbose >= 2 )
+        return @problems;
+    }
+} ## end sub gen_license_problems_in_text_file
 
 # In "Text" files, just look for the full language.
 # No need to comment it out.
@@ -778,3 +875,4 @@ sub license_problems_in_fdl_file {
 
 1;
 
+# vim: expandtab shiftwidth=4:

@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-# Copyright 2013 Jeffrey Kegler
+# Copyright 2014 Jeffrey Kegler
 # This file is part of Marpa::R3.  Marpa::R3 is free software: you can
 # redistribute it and/or modify it under the terms of the GNU Lesser
 # General Public License as published by the Free Software Foundation,
@@ -211,20 +211,22 @@ TEST: for my $test_data (@test_data) {
 # Marpa::R3::Display::End
 
         TOKEN: for my $token ( @{$terminals_expected} ) {
-            next TOKEN if $token ~~ @expected_symbols;
+            next TOKEN if grep { $token eq $_ } @expected_symbols;
             $terminals_expected_matches_events = 0;
             Test::More::diag( $token, ' not in events() at pos ', $pos );
         }
 
         TOKEN: for my $token (@expected_symbols) {
-            next TOKEN if $token ~~ @{$terminals_expected};
+            next TOKEN if grep { $token eq $_ } @{$terminals_expected};
             $terminals_expected_matches_events = 0;
             Test::More::diag( $token, ' not in terminals_expected() at pos ',
                 $pos );
         } ## end TOKEN: for my $token (@expected_symbols)
 
-        TOKEN_TYPE: while ( my ( $token, $regex ) = each %regexes ) {
-            next TOKEN_TYPE if not $token ~~ $terminals_expected;
+        TOKEN_TYPE: for my $token ( keys %regexes ) {
+            my $regex = $regexes{$token};
+            next TOKEN_TYPE
+                if not grep { $token eq $_ } @{$terminals_expected};
             pos $test_input = $pos;
             next TOKEN_TYPE
                 if not $test_input =~ m{ \G \s* (?<match>$regex) }xgms;
@@ -233,7 +235,7 @@ TEST: for my $test_data (@test_data) {
             $recce->alternative( $token, \$+{match},
                 ( ( pos $test_input ) - $pos ) );
 
-        } ## end TOKEN_TYPE: while ( my ( $token, $regex ) = each %regexes )
+        } ## end TOKEN_TYPE: for my $token ( keys %regexes )
         $recce->earleme_complete();
         $terminals_expected = $recce->terminals_expected();
     } ## end for ( my $pos = 0; $pos < $input_length; $pos++ )

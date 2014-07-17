@@ -1,4 +1,4 @@
- # Copyright 2013 Jeffrey Kegler
+ # Copyright 2014 Jeffrey Kegler
  # This file is part of Marpa::R3.  Marpa::R3 is free software: you can
  # redistribute it and/or modify it under the terms of the GNU Lesser
  # General Public License as published by the Free Software Foundation,
@@ -43,6 +43,21 @@ PPCODE:
   if ( gp_result == -1 ) { XSRETURN_UNDEF; }
   if ( gp_result < 0 && g_wrapper->throw ) {
     croak( "Problem in g->event_count(): %s",
+     xs_g_error( g_wrapper ));
+  }
+  XPUSHs (sv_2mortal (newSViv (gp_result)));
+}
+
+void
+force_valued( g_wrapper )
+    G_Wrapper *g_wrapper;
+PPCODE:
+{
+  Marpa_Grammar self = g_wrapper->g;
+  int gp_result = marpa_g_force_valued(self);
+  if ( gp_result == -1 ) { XSRETURN_UNDEF; }
+  if ( gp_result < 0 && g_wrapper->throw ) {
+    croak( "Problem in g->force_valued(): %s",
      xs_g_error( g_wrapper ));
   }
   XPUSHs (sv_2mortal (newSViv (gp_result)));
@@ -381,6 +396,39 @@ PPCODE:
 }
 
 void
+symbol_is_completion_event( g_wrapper, sym_id )
+    G_Wrapper *g_wrapper;
+    Marpa_Symbol_ID sym_id;
+PPCODE:
+{
+  Marpa_Grammar self = g_wrapper->g;
+  int gp_result = marpa_g_symbol_is_completion_event(self, sym_id);
+  if ( gp_result == -1 ) { XSRETURN_UNDEF; }
+  if ( gp_result < 0 && g_wrapper->throw ) {
+    croak( "Problem in g->symbol_is_completion_event(%d): %s",
+     sym_id, xs_g_error( g_wrapper ));
+  }
+  XPUSHs (sv_2mortal (newSViv (gp_result)));
+}
+
+void
+symbol_is_completion_event_set( g_wrapper, sym_id, value )
+    G_Wrapper *g_wrapper;
+    Marpa_Symbol_ID sym_id;
+    int value;
+PPCODE:
+{
+  Marpa_Grammar self = g_wrapper->g;
+  int gp_result = marpa_g_symbol_is_completion_event_set(self, sym_id, value);
+  if ( gp_result == -1 ) { XSRETURN_UNDEF; }
+  if ( gp_result < 0 && g_wrapper->throw ) {
+    croak( "Problem in g->symbol_is_completion_event_set(%d, %d): %s",
+     sym_id, value, xs_g_error( g_wrapper ));
+  }
+  XPUSHs (sv_2mortal (newSViv (gp_result)));
+}
+
+void
 symbol_is_counted( g_wrapper, symbol_id )
     G_Wrapper *g_wrapper;
     Marpa_Symbol_ID symbol_id;
@@ -408,6 +456,72 @@ PPCODE:
   if ( gp_result < 0 && g_wrapper->throw ) {
     croak( "Problem in g->symbol_is_nullable(%d): %s",
      symbol_id, xs_g_error( g_wrapper ));
+  }
+  XPUSHs (sv_2mortal (newSViv (gp_result)));
+}
+
+void
+symbol_is_nulled_event( g_wrapper, sym_id )
+    G_Wrapper *g_wrapper;
+    Marpa_Symbol_ID sym_id;
+PPCODE:
+{
+  Marpa_Grammar self = g_wrapper->g;
+  int gp_result = marpa_g_symbol_is_nulled_event(self, sym_id);
+  if ( gp_result == -1 ) { XSRETURN_UNDEF; }
+  if ( gp_result < 0 && g_wrapper->throw ) {
+    croak( "Problem in g->symbol_is_nulled_event(%d): %s",
+     sym_id, xs_g_error( g_wrapper ));
+  }
+  XPUSHs (sv_2mortal (newSViv (gp_result)));
+}
+
+void
+symbol_is_nulled_event_set( g_wrapper, sym_id, value )
+    G_Wrapper *g_wrapper;
+    Marpa_Symbol_ID sym_id;
+    int value;
+PPCODE:
+{
+  Marpa_Grammar self = g_wrapper->g;
+  int gp_result = marpa_g_symbol_is_nulled_event_set(self, sym_id, value);
+  if ( gp_result == -1 ) { XSRETURN_UNDEF; }
+  if ( gp_result < 0 && g_wrapper->throw ) {
+    croak( "Problem in g->symbol_is_nulled_event_set(%d, %d): %s",
+     sym_id, value, xs_g_error( g_wrapper ));
+  }
+  XPUSHs (sv_2mortal (newSViv (gp_result)));
+}
+
+void
+symbol_is_prediction_event( g_wrapper, sym_id )
+    G_Wrapper *g_wrapper;
+    Marpa_Symbol_ID sym_id;
+PPCODE:
+{
+  Marpa_Grammar self = g_wrapper->g;
+  int gp_result = marpa_g_symbol_is_prediction_event(self, sym_id);
+  if ( gp_result == -1 ) { XSRETURN_UNDEF; }
+  if ( gp_result < 0 && g_wrapper->throw ) {
+    croak( "Problem in g->symbol_is_prediction_event(%d): %s",
+     sym_id, xs_g_error( g_wrapper ));
+  }
+  XPUSHs (sv_2mortal (newSViv (gp_result)));
+}
+
+void
+symbol_is_prediction_event_set( g_wrapper, sym_id, value )
+    G_Wrapper *g_wrapper;
+    Marpa_Symbol_ID sym_id;
+    int value;
+PPCODE:
+{
+  Marpa_Grammar self = g_wrapper->g;
+  int gp_result = marpa_g_symbol_is_prediction_event_set(self, sym_id, value);
+  if ( gp_result == -1 ) { XSRETURN_UNDEF; }
+  if ( gp_result < 0 && g_wrapper->throw ) {
+    croak( "Problem in g->symbol_is_prediction_event_set(%d, %d): %s",
+     sym_id, value, xs_g_error( g_wrapper ));
   }
   XPUSHs (sv_2mortal (newSViv (gp_result)));
 }
@@ -541,7 +655,58 @@ PPCODE:
   XPUSHs (sv_2mortal (newSViv (gp_result)));
 }
 
+void
+zwa_new( g_wrapper, default_value )
+    G_Wrapper *g_wrapper;
+    int default_value;
+PPCODE:
+{
+  Marpa_Grammar self = g_wrapper->g;
+  int gp_result = marpa_g_zwa_new(self, default_value);
+  if ( gp_result == -1 ) { XSRETURN_UNDEF; }
+  if ( gp_result < 0 && g_wrapper->throw ) {
+    croak( "Problem in g->zwa_new(%d): %s",
+     default_value, xs_g_error( g_wrapper ));
+  }
+  XPUSHs (sv_2mortal (newSViv (gp_result)));
+}
+
+void
+zwa_place( g_wrapper, zwaid, xrl_id, rhs_ix )
+    G_Wrapper *g_wrapper;
+    Marpa_Assertion_ID zwaid;
+    Marpa_Rule_ID xrl_id;
+    int rhs_ix;
+PPCODE:
+{
+  Marpa_Grammar self = g_wrapper->g;
+  int gp_result = marpa_g_zwa_place(self, zwaid, xrl_id, rhs_ix);
+  if ( gp_result == -1 ) { XSRETURN_UNDEF; }
+  if ( gp_result < 0 && g_wrapper->throw ) {
+    croak( "Problem in g->zwa_place(%d, %d, %d): %s",
+     zwaid, xrl_id, rhs_ix, xs_g_error( g_wrapper ));
+  }
+  XPUSHs (sv_2mortal (newSViv (gp_result)));
+}
+
 MODULE = Marpa::R3        PACKAGE = Marpa::R3::Thin::R
+
+void
+completion_symbol_activate( r_wrapper, sym_id, reactivate )
+    R_Wrapper *r_wrapper;
+    Marpa_Symbol_ID sym_id;
+    int reactivate;
+PPCODE:
+{
+  Marpa_Recognizer self = r_wrapper->r;
+  int gp_result = marpa_r_completion_symbol_activate(self, sym_id, reactivate);
+  if ( gp_result == -1 ) { XSRETURN_UNDEF; }
+  if ( gp_result < 0 && r_wrapper->base->throw ) {
+    croak( "Problem in r->completion_symbol_activate(%d, %d): %s",
+     sym_id, reactivate, xs_g_error( r_wrapper->base ));
+  }
+  XPUSHs (sv_2mortal (newSViv (gp_result)));
+}
 
 void
 current_earleme( r_wrapper )
@@ -621,21 +786,6 @@ PPCODE:
 }
 
 void
-furthest_earleme( r_wrapper )
-    R_Wrapper *r_wrapper;
-PPCODE:
-{
-  Marpa_Recognizer self = r_wrapper->r;
-  int gp_result = marpa_r_furthest_earleme(self);
-  if ( gp_result == -1 ) { XSRETURN_UNDEF; }
-  if ( gp_result < 0 && r_wrapper->base->throw ) {
-    croak( "Problem in r->furthest_earleme(): %s",
-     xs_g_error( r_wrapper->base ));
-  }
-  XPUSHs (sv_2mortal (newSViv (gp_result)));
-}
-
-void
 earley_set_value( r_wrapper, ordinal )
     R_Wrapper *r_wrapper;
     Marpa_Earley_Set_ID ordinal;
@@ -647,37 +797,6 @@ PPCODE:
   if ( gp_result < 0 && r_wrapper->base->throw ) {
     croak( "Problem in r->earley_set_value(%d): %s",
      ordinal, xs_g_error( r_wrapper->base ));
-  }
-  XPUSHs (sv_2mortal (newSViv (gp_result)));
-}
-
-void
-latest_earley_set_value_set( r_wrapper, value )
-    R_Wrapper *r_wrapper;
-    int value;
-PPCODE:
-{
-  Marpa_Recognizer self = r_wrapper->r;
-  int gp_result = marpa_r_latest_earley_set_value_set(self, value);
-  if ( gp_result == -1 ) { XSRETURN_UNDEF; }
-  if ( gp_result < 0 && r_wrapper->base->throw ) {
-    croak( "Problem in r->latest_earley_set_value_set(%d): %s",
-     value, xs_g_error( r_wrapper->base ));
-  }
-  XPUSHs (sv_2mortal (newSViv (gp_result)));
-}
-
-void
-is_exhausted( r_wrapper )
-    R_Wrapper *r_wrapper;
-PPCODE:
-{
-  Marpa_Recognizer self = r_wrapper->r;
-  int gp_result = marpa_r_is_exhausted(self);
-  if ( gp_result == -1 ) { XSRETURN_UNDEF; }
-  if ( gp_result < 0 && r_wrapper->base->throw ) {
-    croak( "Problem in r->is_exhausted(): %s",
-     xs_g_error( r_wrapper->base ));
   }
   XPUSHs (sv_2mortal (newSViv (gp_result)));
 }
@@ -700,6 +819,36 @@ PPCODE:
 }
 
 void
+furthest_earleme( r_wrapper )
+    R_Wrapper *r_wrapper;
+PPCODE:
+{
+  Marpa_Recognizer self = r_wrapper->r;
+  int gp_result = marpa_r_furthest_earleme(self);
+  if ( gp_result == -1 ) { XSRETURN_UNDEF; }
+  if ( gp_result < 0 && r_wrapper->base->throw ) {
+    croak( "Problem in r->furthest_earleme(): %s",
+     xs_g_error( r_wrapper->base ));
+  }
+  XPUSHs (sv_2mortal (newSViv (gp_result)));
+}
+
+void
+is_exhausted( r_wrapper )
+    R_Wrapper *r_wrapper;
+PPCODE:
+{
+  Marpa_Recognizer self = r_wrapper->r;
+  int gp_result = marpa_r_is_exhausted(self);
+  if ( gp_result == -1 ) { XSRETURN_UNDEF; }
+  if ( gp_result < 0 && r_wrapper->base->throw ) {
+    croak( "Problem in r->is_exhausted(): %s",
+     xs_g_error( r_wrapper->base ));
+  }
+  XPUSHs (sv_2mortal (newSViv (gp_result)));
+}
+
+void
 latest_earley_set( r_wrapper )
     R_Wrapper *r_wrapper;
 PPCODE:
@@ -710,6 +859,56 @@ PPCODE:
   if ( gp_result < 0 && r_wrapper->base->throw ) {
     croak( "Problem in r->latest_earley_set(): %s",
      xs_g_error( r_wrapper->base ));
+  }
+  XPUSHs (sv_2mortal (newSViv (gp_result)));
+}
+
+void
+latest_earley_set_value_set( r_wrapper, value )
+    R_Wrapper *r_wrapper;
+    int value;
+PPCODE:
+{
+  Marpa_Recognizer self = r_wrapper->r;
+  int gp_result = marpa_r_latest_earley_set_value_set(self, value);
+  if ( gp_result == -1 ) { XSRETURN_UNDEF; }
+  if ( gp_result < 0 && r_wrapper->base->throw ) {
+    croak( "Problem in r->latest_earley_set_value_set(%d): %s",
+     value, xs_g_error( r_wrapper->base ));
+  }
+  XPUSHs (sv_2mortal (newSViv (gp_result)));
+}
+
+void
+nulled_symbol_activate( r_wrapper, sym_id, reactivate )
+    R_Wrapper *r_wrapper;
+    Marpa_Symbol_ID sym_id;
+    int reactivate;
+PPCODE:
+{
+  Marpa_Recognizer self = r_wrapper->r;
+  int gp_result = marpa_r_nulled_symbol_activate(self, sym_id, reactivate);
+  if ( gp_result == -1 ) { XSRETURN_UNDEF; }
+  if ( gp_result < 0 && r_wrapper->base->throw ) {
+    croak( "Problem in r->nulled_symbol_activate(%d, %d): %s",
+     sym_id, reactivate, xs_g_error( r_wrapper->base ));
+  }
+  XPUSHs (sv_2mortal (newSViv (gp_result)));
+}
+
+void
+prediction_symbol_activate( r_wrapper, sym_id, reactivate )
+    R_Wrapper *r_wrapper;
+    Marpa_Symbol_ID sym_id;
+    int reactivate;
+PPCODE:
+{
+  Marpa_Recognizer self = r_wrapper->r;
+  int gp_result = marpa_r_prediction_symbol_activate(self, sym_id, reactivate);
+  if ( gp_result == -1 ) { XSRETURN_UNDEF; }
+  if ( gp_result < 0 && r_wrapper->base->throw ) {
+    croak( "Problem in r->prediction_symbol_activate(%d, %d): %s",
+     sym_id, reactivate, xs_g_error( r_wrapper->base ));
   }
   XPUSHs (sv_2mortal (newSViv (gp_result)));
 }
@@ -746,21 +945,102 @@ PPCODE:
 }
 
 void
-start_input( r_wrapper )
+terminal_is_expected( r_wrapper, xsyid )
     R_Wrapper *r_wrapper;
+    Marpa_Symbol_ID xsyid;
 PPCODE:
 {
   Marpa_Recognizer self = r_wrapper->r;
-  int gp_result = marpa_r_start_input(self);
+  int gp_result = marpa_r_terminal_is_expected(self, xsyid);
   if ( gp_result == -1 ) { XSRETURN_UNDEF; }
   if ( gp_result < 0 && r_wrapper->base->throw ) {
-    croak( "Problem in r->start_input(): %s",
-     xs_g_error( r_wrapper->base ));
+    croak( "Problem in r->terminal_is_expected(%d): %s",
+     xsyid, xs_g_error( r_wrapper->base ));
+  }
+  XPUSHs (sv_2mortal (newSViv (gp_result)));
+}
+
+void
+zwa_default( r_wrapper, zwaid )
+    R_Wrapper *r_wrapper;
+    Marpa_Assertion_ID zwaid;
+PPCODE:
+{
+  Marpa_Recognizer self = r_wrapper->r;
+  int gp_result = marpa_r_zwa_default(self, zwaid);
+  if ( gp_result == -1 ) { XSRETURN_UNDEF; }
+  if ( gp_result < 0 && r_wrapper->base->throw ) {
+    croak( "Problem in r->zwa_default(%d): %s",
+     zwaid, xs_g_error( r_wrapper->base ));
+  }
+  XPUSHs (sv_2mortal (newSViv (gp_result)));
+}
+
+void
+zwa_default_set( r_wrapper, zwaid, default_value )
+    R_Wrapper *r_wrapper;
+    Marpa_Assertion_ID zwaid;
+    int default_value;
+PPCODE:
+{
+  Marpa_Recognizer self = r_wrapper->r;
+  int gp_result = marpa_r_zwa_default_set(self, zwaid, default_value);
+  if ( gp_result == -1 ) { XSRETURN_UNDEF; }
+  if ( gp_result < 0 && r_wrapper->base->throw ) {
+    croak( "Problem in r->zwa_default_set(%d, %d): %s",
+     zwaid, default_value, xs_g_error( r_wrapper->base ));
+  }
+  XPUSHs (sv_2mortal (newSViv (gp_result)));
+}
+
+MODULE = Marpa::R3        PACKAGE = Marpa::R3::Thin::B
+
+void
+ambiguity_metric( b_wrapper )
+    B_Wrapper *b_wrapper;
+PPCODE:
+{
+  Marpa_Bocage self = b_wrapper->b;
+  int gp_result = marpa_b_ambiguity_metric(self);
+  if ( gp_result == -1 ) { XSRETURN_UNDEF; }
+  if ( gp_result < 0 && b_wrapper->base->throw ) {
+    croak( "Problem in b->ambiguity_metric(): %s",
+     xs_g_error( b_wrapper->base ));
+  }
+  XPUSHs (sv_2mortal (newSViv (gp_result)));
+}
+
+void
+is_null( b_wrapper )
+    B_Wrapper *b_wrapper;
+PPCODE:
+{
+  Marpa_Bocage self = b_wrapper->b;
+  int gp_result = marpa_b_is_null(self);
+  if ( gp_result == -1 ) { XSRETURN_UNDEF; }
+  if ( gp_result < 0 && b_wrapper->base->throw ) {
+    croak( "Problem in b->is_null(): %s",
+     xs_g_error( b_wrapper->base ));
   }
   XPUSHs (sv_2mortal (newSViv (gp_result)));
 }
 
 MODULE = Marpa::R3        PACKAGE = Marpa::R3::Thin::O
+
+void
+ambiguity_metric( o_wrapper )
+    O_Wrapper *o_wrapper;
+PPCODE:
+{
+  Marpa_Order self = o_wrapper->o;
+  int gp_result = marpa_o_ambiguity_metric(self);
+  if ( gp_result == -1 ) { XSRETURN_UNDEF; }
+  if ( gp_result < 0 && o_wrapper->base->throw ) {
+    croak( "Problem in o->ambiguity_metric(): %s",
+     xs_g_error( o_wrapper->base ));
+  }
+  XPUSHs (sv_2mortal (newSViv (gp_result)));
+}
 
 void
 high_rank_only_set( o_wrapper, flag )
@@ -788,6 +1068,21 @@ PPCODE:
   if ( gp_result == -1 ) { XSRETURN_UNDEF; }
   if ( gp_result < 0 && o_wrapper->base->throw ) {
     croak( "Problem in o->high_rank_only(): %s",
+     xs_g_error( o_wrapper->base ));
+  }
+  XPUSHs (sv_2mortal (newSViv (gp_result)));
+}
+
+void
+is_null( o_wrapper )
+    O_Wrapper *o_wrapper;
+PPCODE:
+{
+  Marpa_Order self = o_wrapper->o;
+  int gp_result = marpa_o_is_null(self);
+  if ( gp_result == -1 ) { XSRETURN_UNDEF; }
+  if ( gp_result < 0 && o_wrapper->base->throw ) {
+    croak( "Problem in o->is_null(): %s",
      xs_g_error( o_wrapper->base ));
   }
   XPUSHs (sv_2mortal (newSViv (gp_result)));
@@ -843,18 +1138,16 @@ PPCODE:
 MODULE = Marpa::R3        PACKAGE = Marpa::R3::Thin::V
 
 void
-symbol_is_valued_set( v_wrapper, symbol_id, value )
+valued_force( v_wrapper )
     V_Wrapper *v_wrapper;
-    Marpa_Symbol_ID symbol_id;
-    int value;
 PPCODE:
 {
   Marpa_Value self = v_wrapper->v;
-  int gp_result = marpa_v_symbol_is_valued_set(self, symbol_id, value);
+  int gp_result = marpa_v_valued_force(self);
   if ( gp_result == -1 ) { XSRETURN_UNDEF; }
   if ( gp_result < 0 && v_wrapper->base->throw ) {
-    croak( "Problem in v->symbol_is_valued_set(%d, %d): %s",
-     symbol_id, value, xs_g_error( v_wrapper->base ));
+    croak( "Problem in v->valued_force(): %s",
+     xs_g_error( v_wrapper->base ));
   }
   XPUSHs (sv_2mortal (newSViv (gp_result)));
 }
@@ -871,6 +1164,23 @@ PPCODE:
   if ( gp_result == -1 ) { XSRETURN_UNDEF; }
   if ( gp_result < 0 && v_wrapper->base->throw ) {
     croak( "Problem in v->rule_is_valued_set(%d, %d): %s",
+     symbol_id, value, xs_g_error( v_wrapper->base ));
+  }
+  XPUSHs (sv_2mortal (newSViv (gp_result)));
+}
+
+void
+symbol_is_valued_set( v_wrapper, symbol_id, value )
+    V_Wrapper *v_wrapper;
+    Marpa_Symbol_ID symbol_id;
+    int value;
+PPCODE:
+{
+  Marpa_Value self = v_wrapper->v;
+  int gp_result = marpa_v_symbol_is_valued_set(self, symbol_id, value);
+  if ( gp_result == -1 ) { XSRETURN_UNDEF; }
+  if ( gp_result < 0 && v_wrapper->base->throw ) {
+    croak( "Problem in v->symbol_is_valued_set(%d, %d): %s",
      symbol_id, value, xs_g_error( v_wrapper->base ));
   }
   XPUSHs (sv_2mortal (newSViv (gp_result)));
@@ -960,17 +1270,289 @@ PPCODE:
 }
 
 void
-_marpa_g_isy_rank( g_wrapper, isy_id )
+_marpa_g_nsy_rank( g_wrapper, nsy_id )
     G_Wrapper *g_wrapper;
-    Marpa_ISY_ID isy_id;
+    Marpa_NSY_ID nsy_id;
 PPCODE:
 {
   Marpa_Grammar self = g_wrapper->g;
-  int gp_result = _marpa_g_isy_rank(self, isy_id);
+  int gp_result = _marpa_g_nsy_rank(self, nsy_id);
   if ( gp_result == -1 ) { XSRETURN_UNDEF; }
   if ( gp_result < 0 && g_wrapper->throw ) {
-    croak( "Problem in g->_marpa_g_isy_rank(%d): %s",
-     isy_id, xs_g_error( g_wrapper ));
+    croak( "Problem in g->_marpa_g_nsy_rank(%d): %s",
+     nsy_id, xs_g_error( g_wrapper ));
+  }
+  XPUSHs (sv_2mortal (newSViv (gp_result)));
+}
+
+void
+_marpa_g_nsy_is_semantic( g_wrapper, nsy_id )
+    G_Wrapper *g_wrapper;
+    Marpa_NSY_ID nsy_id;
+PPCODE:
+{
+  Marpa_Grammar self = g_wrapper->g;
+  int gp_result = _marpa_g_nsy_is_semantic(self, nsy_id);
+  if ( gp_result == -1 ) { XSRETURN_UNDEF; }
+  if ( gp_result < 0 && g_wrapper->throw ) {
+    croak( "Problem in g->_marpa_g_nsy_is_semantic(%d): %s",
+     nsy_id, xs_g_error( g_wrapper ));
+  }
+  XPUSHs (sv_2mortal (newSViv (gp_result)));
+}
+
+MODULE = Marpa::R3        PACKAGE = Marpa::R3::Thin::B
+
+void
+_marpa_b_and_node_cause( b_wrapper, ordinal )
+    B_Wrapper *b_wrapper;
+    Marpa_And_Node_ID ordinal;
+PPCODE:
+{
+  Marpa_Bocage self = b_wrapper->b;
+  int gp_result = _marpa_b_and_node_cause(self, ordinal);
+  if ( gp_result == -1 ) { XSRETURN_UNDEF; }
+  if ( gp_result < 0 && b_wrapper->base->throw ) {
+    croak( "Problem in b->_marpa_b_and_node_cause(%d): %s",
+     ordinal, xs_g_error( b_wrapper->base ));
+  }
+  XPUSHs (sv_2mortal (newSViv (gp_result)));
+}
+
+void
+_marpa_b_and_node_count( b_wrapper )
+    B_Wrapper *b_wrapper;
+PPCODE:
+{
+  Marpa_Bocage self = b_wrapper->b;
+  int gp_result = _marpa_b_and_node_count(self);
+  if ( gp_result == -1 ) { XSRETURN_UNDEF; }
+  if ( gp_result < 0 && b_wrapper->base->throw ) {
+    croak( "Problem in b->_marpa_b_and_node_count(): %s",
+     xs_g_error( b_wrapper->base ));
+  }
+  XPUSHs (sv_2mortal (newSViv (gp_result)));
+}
+
+void
+_marpa_b_and_node_middle( b_wrapper, and_node_id )
+    B_Wrapper *b_wrapper;
+    Marpa_And_Node_ID and_node_id;
+PPCODE:
+{
+  Marpa_Bocage self = b_wrapper->b;
+  int gp_result = _marpa_b_and_node_middle(self, and_node_id);
+  if ( gp_result == -1 ) { XSRETURN_UNDEF; }
+  if ( gp_result < 0 && b_wrapper->base->throw ) {
+    croak( "Problem in b->_marpa_b_and_node_middle(%d): %s",
+     and_node_id, xs_g_error( b_wrapper->base ));
+  }
+  XPUSHs (sv_2mortal (newSViv (gp_result)));
+}
+
+void
+_marpa_b_and_node_parent( b_wrapper, and_node_id )
+    B_Wrapper *b_wrapper;
+    Marpa_And_Node_ID and_node_id;
+PPCODE:
+{
+  Marpa_Bocage self = b_wrapper->b;
+  int gp_result = _marpa_b_and_node_parent(self, and_node_id);
+  if ( gp_result == -1 ) { XSRETURN_UNDEF; }
+  if ( gp_result < 0 && b_wrapper->base->throw ) {
+    croak( "Problem in b->_marpa_b_and_node_parent(%d): %s",
+     and_node_id, xs_g_error( b_wrapper->base ));
+  }
+  XPUSHs (sv_2mortal (newSViv (gp_result)));
+}
+
+void
+_marpa_b_and_node_predecessor( b_wrapper, ordinal )
+    B_Wrapper *b_wrapper;
+    Marpa_And_Node_ID ordinal;
+PPCODE:
+{
+  Marpa_Bocage self = b_wrapper->b;
+  int gp_result = _marpa_b_and_node_predecessor(self, ordinal);
+  if ( gp_result == -1 ) { XSRETURN_UNDEF; }
+  if ( gp_result < 0 && b_wrapper->base->throw ) {
+    croak( "Problem in b->_marpa_b_and_node_predecessor(%d): %s",
+     ordinal, xs_g_error( b_wrapper->base ));
+  }
+  XPUSHs (sv_2mortal (newSViv (gp_result)));
+}
+
+void
+_marpa_b_and_node_symbol( b_wrapper, and_node_id )
+    B_Wrapper *b_wrapper;
+    Marpa_And_Node_ID and_node_id;
+PPCODE:
+{
+  Marpa_Bocage self = b_wrapper->b;
+  int gp_result = _marpa_b_and_node_symbol(self, and_node_id);
+  if ( gp_result == -1 ) { XSRETURN_UNDEF; }
+  if ( gp_result < 0 && b_wrapper->base->throw ) {
+    croak( "Problem in b->_marpa_b_and_node_symbol(%d): %s",
+     and_node_id, xs_g_error( b_wrapper->base ));
+  }
+  XPUSHs (sv_2mortal (newSViv (gp_result)));
+}
+
+void
+_marpa_b_or_node_and_count( b_wrapper, or_node_id )
+    B_Wrapper *b_wrapper;
+    Marpa_Or_Node_ID or_node_id;
+PPCODE:
+{
+  Marpa_Bocage self = b_wrapper->b;
+  int gp_result = _marpa_b_or_node_and_count(self, or_node_id);
+  if ( gp_result == -1 ) { XSRETURN_UNDEF; }
+  if ( gp_result < 0 && b_wrapper->base->throw ) {
+    croak( "Problem in b->_marpa_b_or_node_and_count(%d): %s",
+     or_node_id, xs_g_error( b_wrapper->base ));
+  }
+  XPUSHs (sv_2mortal (newSViv (gp_result)));
+}
+
+void
+_marpa_b_or_node_first_and( b_wrapper, ordinal )
+    B_Wrapper *b_wrapper;
+    Marpa_Or_Node_ID ordinal;
+PPCODE:
+{
+  Marpa_Bocage self = b_wrapper->b;
+  int gp_result = _marpa_b_or_node_first_and(self, ordinal);
+  if ( gp_result == -1 ) { XSRETURN_UNDEF; }
+  if ( gp_result < 0 && b_wrapper->base->throw ) {
+    croak( "Problem in b->_marpa_b_or_node_first_and(%d): %s",
+     ordinal, xs_g_error( b_wrapper->base ));
+  }
+  XPUSHs (sv_2mortal (newSViv (gp_result)));
+}
+
+void
+_marpa_b_or_node_irl( b_wrapper, ordinal )
+    B_Wrapper *b_wrapper;
+    Marpa_Or_Node_ID ordinal;
+PPCODE:
+{
+  Marpa_Bocage self = b_wrapper->b;
+  int gp_result = _marpa_b_or_node_irl(self, ordinal);
+  if ( gp_result == -1 ) { XSRETURN_UNDEF; }
+  if ( gp_result < 0 && b_wrapper->base->throw ) {
+    croak( "Problem in b->_marpa_b_or_node_irl(%d): %s",
+     ordinal, xs_g_error( b_wrapper->base ));
+  }
+  XPUSHs (sv_2mortal (newSViv (gp_result)));
+}
+
+void
+_marpa_b_or_node_is_semantic( b_wrapper, or_node_id )
+    B_Wrapper *b_wrapper;
+    Marpa_Or_Node_ID or_node_id;
+PPCODE:
+{
+  Marpa_Bocage self = b_wrapper->b;
+  int gp_result = _marpa_b_or_node_is_semantic(self, or_node_id);
+  if ( gp_result == -1 ) { XSRETURN_UNDEF; }
+  if ( gp_result < 0 && b_wrapper->base->throw ) {
+    croak( "Problem in b->_marpa_b_or_node_is_semantic(%d): %s",
+     or_node_id, xs_g_error( b_wrapper->base ));
+  }
+  XPUSHs (sv_2mortal (newSViv (gp_result)));
+}
+
+void
+_marpa_b_or_node_is_whole( b_wrapper, or_node_id )
+    B_Wrapper *b_wrapper;
+    Marpa_Or_Node_ID or_node_id;
+PPCODE:
+{
+  Marpa_Bocage self = b_wrapper->b;
+  int gp_result = _marpa_b_or_node_is_whole(self, or_node_id);
+  if ( gp_result == -1 ) { XSRETURN_UNDEF; }
+  if ( gp_result < 0 && b_wrapper->base->throw ) {
+    croak( "Problem in b->_marpa_b_or_node_is_whole(%d): %s",
+     or_node_id, xs_g_error( b_wrapper->base ));
+  }
+  XPUSHs (sv_2mortal (newSViv (gp_result)));
+}
+
+void
+_marpa_b_or_node_last_and( b_wrapper, ordinal )
+    B_Wrapper *b_wrapper;
+    Marpa_Or_Node_ID ordinal;
+PPCODE:
+{
+  Marpa_Bocage self = b_wrapper->b;
+  int gp_result = _marpa_b_or_node_last_and(self, ordinal);
+  if ( gp_result == -1 ) { XSRETURN_UNDEF; }
+  if ( gp_result < 0 && b_wrapper->base->throw ) {
+    croak( "Problem in b->_marpa_b_or_node_last_and(%d): %s",
+     ordinal, xs_g_error( b_wrapper->base ));
+  }
+  XPUSHs (sv_2mortal (newSViv (gp_result)));
+}
+
+void
+_marpa_b_or_node_origin( b_wrapper, ordinal )
+    B_Wrapper *b_wrapper;
+    Marpa_Or_Node_ID ordinal;
+PPCODE:
+{
+  Marpa_Bocage self = b_wrapper->b;
+  int gp_result = _marpa_b_or_node_origin(self, ordinal);
+  if ( gp_result == -1 ) { XSRETURN_UNDEF; }
+  if ( gp_result < 0 && b_wrapper->base->throw ) {
+    croak( "Problem in b->_marpa_b_or_node_origin(%d): %s",
+     ordinal, xs_g_error( b_wrapper->base ));
+  }
+  XPUSHs (sv_2mortal (newSViv (gp_result)));
+}
+
+void
+_marpa_b_or_node_position( b_wrapper, ordinal )
+    B_Wrapper *b_wrapper;
+    Marpa_Or_Node_ID ordinal;
+PPCODE:
+{
+  Marpa_Bocage self = b_wrapper->b;
+  int gp_result = _marpa_b_or_node_position(self, ordinal);
+  if ( gp_result == -1 ) { XSRETURN_UNDEF; }
+  if ( gp_result < 0 && b_wrapper->base->throw ) {
+    croak( "Problem in b->_marpa_b_or_node_position(%d): %s",
+     ordinal, xs_g_error( b_wrapper->base ));
+  }
+  XPUSHs (sv_2mortal (newSViv (gp_result)));
+}
+
+void
+_marpa_b_or_node_set( b_wrapper, ordinal )
+    B_Wrapper *b_wrapper;
+    Marpa_Or_Node_ID ordinal;
+PPCODE:
+{
+  Marpa_Bocage self = b_wrapper->b;
+  int gp_result = _marpa_b_or_node_set(self, ordinal);
+  if ( gp_result == -1 ) { XSRETURN_UNDEF; }
+  if ( gp_result < 0 && b_wrapper->base->throw ) {
+    croak( "Problem in b->_marpa_b_or_node_set(%d): %s",
+     ordinal, xs_g_error( b_wrapper->base ));
+  }
+  XPUSHs (sv_2mortal (newSViv (gp_result)));
+}
+
+void
+_marpa_b_top_or_node( b_wrapper )
+    B_Wrapper *b_wrapper;
+PPCODE:
+{
+  Marpa_Bocage self = b_wrapper->b;
+  int gp_result = _marpa_b_top_or_node(self);
+  if ( gp_result == -1 ) { XSRETURN_UNDEF; }
+  if ( gp_result < 0 && b_wrapper->base->throw ) {
+    croak( "Problem in b->_marpa_b_top_or_node(): %s",
+     xs_g_error( b_wrapper->base ));
   }
   XPUSHs (sv_2mortal (newSViv (gp_result)));
 }

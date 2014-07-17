@@ -1,4 +1,4 @@
-# Copyright 2013 Jeffrey Kegler
+# Copyright 2014 Jeffrey Kegler
 # This file is part of Marpa::R3.  Marpa::R3 is free software: you can
 # redistribute it and/or modify it under the terms of the GNU Lesser
 # General Public License as published by the Free Software Foundation,
@@ -20,4 +20,11 @@ doit:
 	-test -r metag-g2.pl && mv metag-g2.pl metag-g3.pl
 	-test -r metag-g1.pl && mv metag-g1.pl metag-g2.pl
 	-mv metag.pl metag-g1.pl
-	perl -I../../../ -I../../../../blib/arch sl_to_hash.pl < metag.bnf > metag.pl
+	perl sl_to_hash.pl < metag.bnf > metag.pl
+
+bak:
+	for f in metag*.pl; do cp $$f $$f.bak; done
+
+diff:
+	diff metag.pl metag-g1.pl || true
+

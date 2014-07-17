@@ -1,4 +1,4 @@
-# Copyright 2013 Jeffrey Kegler
+# Copyright 2014 Jeffrey Kegler
 # This file is part of Marpa::R3.  Marpa::R3 is free software: you can
 # redistribute it and/or modify it under the terms of the GNU Lesser
 # General Public License as published by the Free Software Foundation,
@@ -20,7 +20,7 @@ use strict;
 use warnings;
 
 use vars qw( $VERSION $STRING_VERSION );
-$VERSION        = '3.001_001';
+$VERSION        = '3.003_000';
 $STRING_VERSION = $VERSION;
 ## no critic (BuiltinFunctions::ProhibitStringyEval)
 $VERSION = eval $VERSION;
@@ -35,6 +35,7 @@ package Marpa::R3::HTML::Internal;
 # Data::Dumper is used in tracing
 use Data::Dumper;
 
+use Marpa::R3::HTML::Internal;
 use Marpa::R3::HTML::Config;
 use Carp ();
 use HTML::Parser 3.69;
@@ -58,18 +59,6 @@ use Marpa::R3::Thin::Trace;
 
 # constants
 
-BEGIN {
-    my $structure = <<'END_OF_STRUCTURE';
-    :package=Marpa::R3::HTML::Internal::TDesc
-    TYPE
-    START_TOKEN
-    END_TOKEN
-    VALUE
-    RULE_ID
-END_OF_STRUCTURE
-    Marpa::R3::offset($structure);
-} ## end BEGIN
-
 use constant PHYSICAL_TOKEN      => 42;
 use constant RUBY_SLIPPERS_TOKEN => 43;
 
@@ -87,23 +76,6 @@ ERROR: for my $error_number ( 0 .. $#LIBMARPA_ERROR_NAMES ) {
         next ERROR;
     }
 } ## end ERROR: for my $error_number ( 0 .. $#LIBMARPA_ERROR_NAMES )
-
-BEGIN {
-    my $structure = <<'END_OF_STRUCTURE';
-    :package=Marpa::R3::HTML::Internal::Token
-    TOKEN_ID
-    =TAG_NAME
-    TYPE
-    LINE
-    COL
-    =COLUMN
-    START_OFFSET
-    END_OFFSET
-    IS_CDATA
-    ATTR
-END_OF_STRUCTURE
-    Marpa::R3::offset($structure);
-} ## end BEGIN
 
 use Marpa::R3::HTML::Callback;
 {
@@ -194,16 +166,17 @@ sub add_handlers {
             or ( $element, $pseudoclass ) =
             ( $specifier =~ /\A ([^:]*) [:] (.*) \z/oxms )
             or $element = $specifier;
-        if ($pseudoclass
-            and not $pseudoclass ~~ [
+        state $allowed_pseudoclasses =
+            { map { ( $_, 1 ) }
                 qw(TOP PI DECL COMMENT PROLOG TRAILER WHITESPACE CDATA PCDATA CRUFT)
-            ]
-            )
+            };
+        if ( $pseudoclass
+            and not exists $allowed_pseudoclasses->{$pseudoclass} )
         {
             Marpa::R3::exception(
                 qq{pseudoclass "$pseudoclass" is not known:\n},
                 "Specifier was $specifier\n" );
-        } ## end if ( $pseudoclass and not $pseudoclass ~~ [ ...])
+        } ## end if ( $pseudoclass and not exists $allowed_pseudoclasses...)
         if ( $pseudoclass and $element ) {
             Marpa::R3::exception(
                 qq{pseudoclass "$pseudoclass" may not have an element specified:\n},
@@ -248,17 +221,17 @@ sub create {
             if ( $option eq 'handlers' ) {
                 add_handlers_from_hashes( $self, $option_hash->{$option} );
             }
-            if (not $option ~~ [
+            state $allowed_options = {
+                map { ( $_, 1 ) }
                     qw(trace_fh trace_values trace_handlers
-                        trace_conflicts
-                        trace_terminals trace_cruft
-			dump_AHFA dump_config compile
-			)
-                ]
-                )
-            {
+                    trace_conflicts
+                    trace_terminals trace_cruft
+                    dump_AHFA dump_config compile
+                    )
+            };
+            if ( not exists $allowed_options->{$option} ) {
                 Marpa::R3::exception("unknown option: $option");
-            } ## end if ( not $option ~~ [ ...])
+            }
             $self->{$option} = $option_hash->{$option};
         } ## end OPTION: for my $option ( keys %{$option_hash} )
     } ## end ARG: for my $arg (@_)
@@ -480,7 +453,7 @@ sub parse {
 
     my ($core_rules,   $runtime_tag,
         $rank_by_name, $is_empty_element,
-	$primary_group_by_tag
+        $primary_group_by_tag
     ) = $self->{config}->contents();
     $self->{is_empty_element} = $is_empty_element;
     if ($self->{dump_config}) {
@@ -497,7 +470,7 @@ sub parse {
         my $rhs    = $rule->{rhs};
         my $min    = $rule->{min};
         my $action = $rule->{action};
-	my @symbol_ids = ();
+        my @symbol_ids = ();
         for my $symbol_name ( $lhs, @{$rhs} ) {
             push @symbol_ids,
                 $tracer->symbol_by_name($symbol_name)
@@ -559,7 +532,7 @@ sub parse {
         PROCESS_TOKEN_TYPE: {
             if ($is_cdata) {
                 $raw_token->[Marpa::R3::HTML::Internal::Token::TOKEN_ID] =
-		    $SYMID_CDATA;
+                    $SYMID_CDATA;
                 last PROCESS_TOKEN_TYPE;
             }
             if ( $token_type eq 'T' ) {
@@ -672,7 +645,9 @@ sub parse {
         for my $symbol_id ( 0 .. $highest_symbol_id ) {
             my $symbol_name = $tracer->symbol_name($symbol_id);
             next SYMBOL if not 0 == index $symbol_name, 'E_';
-            next SYMBOL if $symbol_name ~~ [qw(E_body E_html)];
+            next SYMBOL
+                if $symbol_name eq 'E_body'
+                    or $symbol_name eq 'E_html';
             push @non_final_end_tag_ids, $symbol_id;
         } ## end SYMBOL: for my $symbol_id ( 0 .. $highest_symbol_id )
 
@@ -736,7 +711,7 @@ sub parse {
                 next SYMBOL;
             } ## end if ( not defined $placement )
             my $tag = substr $rejected_symbol_name, 2;
-	    my $primary_group = $primary_group_by_tag->{$tag};
+            my $primary_group = $primary_group_by_tag->{$tag};
             my $element_type = defined $primary_group ? (substr $primary_group, 4) : 'anywhere';
             $ruby_vector =
                 $ruby_vectors{ q{<} . $placement . q{%} . $element_type . q{>} };
@@ -757,11 +732,11 @@ sub parse {
     my @empty_element_end_tag = ();
     {
         TAG: for my $tag (keys %{$is_empty_element}) {
-	    my $start_tag_id = $tracer->symbol_by_name('S_' . $tag);
-	    next TAG if not defined $start_tag_id;
-	    my $end_tag_id = $tracer->symbol_by_name('E_' . $tag);
-	    $empty_element_end_tag[$start_tag_id] = $end_tag_id;
-	}
+            my $start_tag_id = $tracer->symbol_by_name('S_' . $tag);
+            next TAG if not defined $start_tag_id;
+            my $end_tag_id = $tracer->symbol_by_name('E_' . $tag);
+            $empty_element_end_tag[$start_tag_id] = $end_tag_id;
+        }
     }
 
     my $recce = Marpa::R3::Thin::R->new($thin_grammar);
@@ -796,28 +771,28 @@ sub parse {
     my $empty_element_end_tag;
     RECCE_RESPONSE: while ( $token_number < $token_count ) {
 
-	if ( defined $empty_element_end_tag ) {
-	    my $read_result =
-		$recce->alternative( $empty_element_end_tag, RUBY_SLIPPERS_TOKEN,
-		1 );
-	    if ( $read_result != $NO_MARPA_ERROR ) {
-		die $thin_grammar->error();
-	    }
-	    if ($trace_terminals) {
-		say {$trace_fh} 'Virtual end tag accepted: ',
-		    $tracer->symbol_name($empty_element_end_tag)
-		    or Carp::croak("Cannot print: $ERRNO");
-	    }
-	    if ( $recce->earleme_complete() < 0 ) {
-		die $thin_grammar->error();
-	    }
-	    my $current_earleme = $recce->current_earleme();
-	    die $thin_grammar->error() if not defined $current_earleme;
-	    $self->{earleme_to_html_token_ix}->[$current_earleme] =
-		$latest_html_token;
-	    $empty_element_end_tag = undef;
-	    next RECCE_RESPONSE;
-	} ## end if ( defined $empty_element_end_tag )
+        if ( defined $empty_element_end_tag ) {
+            my $read_result =
+                $recce->alternative( $empty_element_end_tag, RUBY_SLIPPERS_TOKEN,
+                1 );
+            if ( $read_result != $NO_MARPA_ERROR ) {
+                die $thin_grammar->error();
+            }
+            if ($trace_terminals) {
+                say {$trace_fh} 'Virtual end tag accepted: ',
+                    $tracer->symbol_name($empty_element_end_tag)
+                    or Carp::croak("Cannot print: $ERRNO");
+            }
+            if ( $recce->earleme_complete() < 0 ) {
+                die $thin_grammar->error();
+            }
+            my $current_earleme = $recce->current_earleme();
+            die $thin_grammar->error() if not defined $current_earleme;
+            $self->{earleme_to_html_token_ix}->[$current_earleme] =
+                $latest_html_token;
+            $empty_element_end_tag = undef;
+            next RECCE_RESPONSE;
+        } ## end if ( defined $empty_element_end_tag )
 
         my $token = $html_parser_tokens[$token_number];
 
@@ -848,7 +823,7 @@ sub parse {
             $self->{earleme_to_html_token_ix}->[$current_earleme] =
                 $latest_html_token;
 
-	    $empty_element_end_tag = $empty_element_end_tag[$attempted_symbol_id];
+            $empty_element_end_tag = $empty_element_end_tag[$attempted_symbol_id];
             next RECCE_RESPONSE;
         } ## end if ( $read_result != $UNEXPECTED_TOKEN_ID )
 
@@ -922,7 +897,7 @@ sub parse {
             $self->{earleme_to_html_token_ix}->[$current_earleme] =
                 $latest_html_token;
 
-	    $empty_element_end_tag = $empty_element_end_tag[$virtual_terminal_to_add];
+            $empty_element_end_tag = $empty_element_end_tag[$virtual_terminal_to_add];
 
             next RECCE_RESPONSE;
         } ## end if ( defined $virtual_terminal_to_add )
@@ -1220,3 +1195,5 @@ sub Marpa::R3::HTML::html {
 }
 
 1;
+
+# vim: set expandtab shiftwidth=4:

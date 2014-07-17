@@ -1,4 +1,4 @@
-# Copyright 2013 Jeffrey Kegler
+# Copyright 2014 Jeffrey Kegler
 # This file is part of Marpa::R3.  Marpa::R3 is free software: you can
 # redistribute it and/or modify it under the terms of the GNU Lesser
 # General Public License as published by the Free Software Foundation,
@@ -15,47 +15,41 @@
 
 =head1 NAME
 
-Marpa::R3 - Release 3 of Marpa
-
-=head1 THIS IS BETA SOFTWARE
-
-Marpa::R3 is beta software.
-The interface is subject to change.
+Marpa::R3 - Release 2 of Marpa
 
 =head1 Synopsis
 
 =for Marpa::R3::Display
-name: Engine Synopsis Unambiguous Parse
+name: Landing page synopsis
 normalize-whitespace: 1
 
     use Marpa::R3;
 
-    my $grammar = Marpa::R3::Grammar->new(
-        {   start   => 'Expression',
-            actions => 'My_Actions',
-            default_action => 'first_arg',
-            rules   => [
-                { lhs => 'Expression', rhs => [qw/Term/] },
-                { lhs => 'Term', rhs => [qw/Factor/] },
-                { lhs => 'Factor', rhs => [qw/Number/] },
-                { lhs => 'Term', rhs => [qw/Term Add Term/], action => 'do_add' },
-                {   lhs    => 'Factor',
-                    rhs    => [qw/Factor Multiply Factor/],
-                    action => 'do_multiply'
-                },
-            ],
-        }
-    );
+    my $dsl = <<'END_OF_DSL';
+    :default ::= action => [name,values]
+    lexeme default = latm => 1
 
-    $grammar->precompute();
+    Expression ::= Term action => ::first
+    Term ::=
+          Factor action => ::first
+        | Term '+' Term action => do_add
+    Factor ::=
+          Number action => ::first
+        | Factor '*' Factor action => do_multiply
+    Number ~ digits
+    digits ~ [\d]+
+    :discard ~ whitespace
+    whitespace ~ [\s]+
+    END_OF_DSL
 
-    my $recce = Marpa::R3::Recognizer->new( { grammar => $grammar } );
+    my $grammar = Marpa::R3::Scanless::G->new( { source => \$dsl } );
+    my $recce = Marpa::R3::Scanless::R->new(
+        { grammar => $grammar, semantics_package => 'My_Actions' } );
+    my $input = '42 * 1 + 7';
+    $recce->read( \$input );
 
-    $recce->read( 'Number', 42 );
-    $recce->read('Multiply');
-    $recce->read( 'Number', 1 );
-    $recce->read('Add');
-    $recce->read( 'Number', 7 );
+    my $value_ref = $recce->value;
+    my $value = $value_ref ? ${$value_ref} : 'No Parse';
 
     sub My_Actions::do_add {
         my ( undef, $t1, undef, $t2 ) = @_;
@@ -66,11 +60,6 @@ normalize-whitespace: 1
         my ( undef, $t1, undef, $t2 ) = @_;
         return $t1 * $t2;
     }
-
-    sub My_Actions::first_arg { shift; return shift; }
-
-    my $value_ref = $recce->value;
-    my $value = $value_ref ? ${$value_ref} : 'No Parse';
 
 =for Marpa::R3::Display::End
 
@@ -83,81 +72,62 @@ grammar can be written in BNF.
 That includes recursive grammars,
 ambiguous grammars, infinitely ambiguous grammars and
 grammars with useless or empty productions.
+Marpa does both left- and right-recursion in linear time --
+in fact if a grammar is in any class currently
+in practical use, Marpa will parse it in linear time.
 
-This document contains a top-level overview
-of the API for the Marpa parse engine.
-The two examples in this document
-show the typical flows of Marpa method calls.
-This document will use these examples
-to describe the basic features of Marpa
-in semi-tutorial fashion.
-Marpa's advanced features, and full reference details of all features,
-can be found in L<the other Marpa API documents|/"Other documents">.
+This document centers around a short tutorial
+of the Scanless interface (SLIF).
+This is the interface most suitable for beginners.
+The SLIF is the most suitable interface for most advanced uses as well.
 
-=head2 The three phases
+=head1 A simple calculator
 
-A parser needs to:
-
-=over
-
-=item * Accept a grammar.
-
-=item * Read input.
-
-=item * Return values from the parses,
-according to a semantics.
-
-=back
-
-In Marpa these three tasks
-are, for the most part, distinct phases.
-Grammars are
-L<C<Marpa::R3::Grammar>|Marpa::R3::Grammar> objects.
-The reading of input and the evaluation of the parse
-according to the semantics is performed by
-L<C<Marpa::R3::Recognizer>|Marpa::R3::Recognizer> objects.
-
-=head1 Example 1: a simple calculator
-
-The synopsis shows the code for a very simple calculator.
+The synopsis shows the code for an extremely simple calculator.
 It handles only
 addition and multiplication of integers.
-This section explains, line by line, how it works.
+The sections which follow explain, line by line, how it works.
+The explanation will assume that the reader
+understands BNF and the basics of grammars -- what rules are,
+what symbols are, what the start symbol of a grammar is, etc.
 
-=head2 Marpa::R3::Grammar::new
+=head2 Marpa::R3::Scanless::G::new
 
 =for Marpa::R3::Display
-name: Engine Synopsis Unambiguous Parse
+name: Landing page synopsis
 partial: 1
 normalize-whitespace: 1
 
-    my $grammar = Marpa::R3::Grammar->new(
-        {   start   => 'Expression',
-            actions => 'My_Actions',
-            default_action => 'first_arg',
-            rules   => [
-                { lhs => 'Expression', rhs => [qw/Term/] },
-                { lhs => 'Term', rhs => [qw/Factor/] },
-                { lhs => 'Factor', rhs => [qw/Number/] },
-                { lhs => 'Term', rhs => [qw/Term Add Term/], action => 'do_add' },
-                {   lhs    => 'Factor',
-                    rhs    => [qw/Factor Multiply Factor/],
-                    action => 'do_multiply'
-                },
-            ],
-        }
-    );
+    my $dsl = <<'END_OF_DSL';
+    :default ::= action => [name,values]
+    lexeme default = latm => 1
+    
+    Expression ::= Term action => ::first
+    Term ::=
+          Factor action => ::first
+        | Term '+' Term action => do_add
+    Factor ::=
+          Number action => ::first
+        | Factor '*' Factor action => do_multiply
+    Number ~ digits
+    digits ~ [\d]+
+    :discard ~ whitespace
+    whitespace ~ [\s]+
+    END_OF_DSL
+
+    my $grammar = Marpa::R3::Scanless::G->new( { source => \$dsl } );
 
 =for Marpa::R3::Display::End
 
-Marpa grammars are
-L<C<Marpa::R3::Grammar>|Marpa::R3::Grammar> objects.
+The code first creates a new SLIF grammar.
+SLIF grammars are
+L<C<Marpa::R3::Scanless:G>|Marpa::R3::Scanless::G> objects.
 They are created
 with the
-L<Marpa::R3::Grammar::new|Marpa::R3::Grammar/"new">
+L<Marpa::R3::Scanless:G::new|Marpa::R3::Scanless::G/"new">
 constructor.
 The arguments to
-L<Marpa::R3::Grammar::new|Marpa::R3::Grammar/"new">
+L<Marpa::R3::Scanless::G::new|Marpa::R3::Scanless::G/"new">
 are references to
 hashes of named arguments.
 In the key/value pairs of these hashes,
@@ -170,182 +140,268 @@ hash value
 is the
 value of the named argument.
 
-=head3 The start named argument
+In the example, there is only one named argument to the SLIF grammar constructor:
+C<source>.
+The value of C<source> must be a reference to a string in the
+L<SLIF's domain-specific language|Marpa::R3::Scanless::DSL>
+(DSL).
+In this example, the DSL consists of several rules
+and pseudo-rules.
+
+=head2 The default pseudo-rule
 
 =for Marpa::R3::Display
-name: Engine Synopsis Unambiguous Parse
+name: Landing page synopsis
 partial: 1
 normalize-whitespace: 1
 
-    start => 'Expression',
+    :default ::= action => [name,values]
+    lexeme default = latm => 1
 
 =for Marpa::R3::Display::End
 
-The C<start> named argument is required.
-Its value is
-a string containing the name of the grammar's start symbol.
+These two lines set useful defaults.
+The first sets a default semantics,
+one which is especially useful for development.
+This is a finished script, so the default semantics
+is not used much.
+We'll talk about this more when we discuss
+L<semantics at the end|/"Semantics">.
 
-=head3 Named arguments for the semantics
+The second line sets the longest acceptable tokens match (LATM)
+style of lexing,
+which is what you'll almost always want.
+It is not the default for historical reasons, so your scripts will
+almost always start with this line.
+
+=head2 A G1 rule
+
+Next follows a G1, or structural rule.
+Structural rules are the kinds of rules typically seen in BNF --
+they describe the symbols which provide the structure of the grammar,
+but leave out details of whitespace.
+The SLIF also handles the lexical details in this example,
+but it does it via L0 rules,
+which we will see shortly.
 
 =for Marpa::R3::Display
-name: Engine Synopsis Unambiguous Parse
+name: Landing page synopsis
 partial: 1
 normalize-whitespace: 1
 
-            actions => 'My_Actions',
-            default_action => 'first_arg',
+    Expression ::= Term action => ::first
 
 =for Marpa::R3::Display::End
 
-The C<actions> and C<default_action> named arguments specify
-semantics.
-Their argument values are strings,
-which acquire their semantics during evaluation.
+As is normal for BNF rules, this rule consists of 
+a left hand side symbol ("C<Expression>"),
+the BNF operator ("C<::=>")
+and a series of right hand side (RHS) symbols.
+There is always exactly one left hand side (LHS)
+symbol.
+There may be any number of RHS symbols.
+In the case of an empty rule,
+the number of RHS symbols would be zero.
+In this rule, there is one RHS
+symbol, "C<Term>".
 
-Evaluation will be described later.
-Peeking ahead,
-C<actions> provides the name
-of a Perl package where Marpa will look for
-its B<actions>.
-The C<default_action> named argument
-will be interpreted
-as an B<action name> in that package.
-This action name will resolve to an action --
-a Perl closure that implements semantics.
-The action specified by C<default_action>
-is used as the action for rules
-with no action of their own.
+The BNF operator ("C<::=>") is what makes this rule
+a G1 (structural) rule.
+Later we will see lexical rules, which will use
+the match operator ("C<~>").
 
-=head3 The rules named argument
+After the rule is an adverb:
+C<< action => ::first >>.
+We'll explain the purpose of the C<action>
+adverbs when we discuss
+L<semantics|/"Semantics">
+
+=head2 More complicated G1 rules
 
 =for Marpa::R3::Display
-name: Engine Synopsis Unambiguous Parse
+name: Landing page synopsis
 partial: 1
 normalize-whitespace: 1
 
-    rules => [
-        { lhs => 'Expression', rhs => [qw/Term/] },
-        { lhs => 'Term',       rhs => [qw/Factor/] },
-        { lhs => 'Factor',     rhs => [qw/Number/] },
-        { lhs => 'Term', rhs => [qw/Term Add Term/], action => 'do_add' },
-        {   lhs    => 'Factor',
-            rhs    => [qw/Factor Multiply Factor/],
-            action => 'do_multiply'
-        },
-    ],
+    Term ::=
+          Factor action => ::first
+        | Term '+' Term action => do_add
 
 =for Marpa::R3::Display::End
 
-The value of the
-C<rules> named argument is a reference to an array of
-B<rule descriptors>.
-In this example, all the rule descriptors are in the "long" form --
-they are references to hashes of B<rule properties>.
-In each key/value pair of a rule descriptor hash, the key is
-the name of a rule property, and the hash value is the value of
-that rule property.
-
-=head4 The lhs property
-
-The value of the C<lhs> rule property must be a string containing
-the name of the rule's left hand side symbol.
-Every Marpa rule must have a left hand side symbol.
-
-=head4 The rhs property
-
-The value of the C<rhs> property is a reference to
-an array of strings containing
-names of the rule's right hand symbols,
-in order.
-This array may be zero length, in which case
-this is an B<empty rule> --
-a rule with no symbols on the right hand side.
-There are no empty rules in this example.
-
-=head4 The action property
-
-The value of the C<action> rule property is a string.
-Peeking ahead, each C<action> property string
-will be interpreted
-as an action name.
-This action name will be resolved
-to a Perl closure that
-implements
-the rule's semantics.
-
-=head2 Marpa::R3::Grammar::precompute
+This rule says that a C<Term> may be one of two
+alternatives: either a C<Factor>
+or two C<Term>'s separated by an addition operator.
+Immediately following is another G1 rule defining
+a C<Factor>.  It is very similar in form
+to the one for C<Term>.
 
 =for Marpa::R3::Display
-name: Engine Synopsis Unambiguous Parse
+name: Landing page synopsis
 partial: 1
 normalize-whitespace: 1
 
-    $grammar->precompute();
+    Factor ::=
+          Number action => ::first
+        | Factor '*' Factor action => do_multiply
 
 =for Marpa::R3::Display::End
 
-Before a Marpa grammar object can be used by a Marpa recognizer,
-it must be B<precomputed>.
-Precomputation compiles data structures that the recognizer will need.
+=head2 L0 rules
 
-=head2 Marpa::R3::Recognizer::new
+The structural rules define the high-level structure of the grammar,
+and ignore details of whitespace, comments, etc.
+Now we look at how the low-level, lexical issues are handled.
+This very simple calculator language does not allow comments,
+but it does define whitespace.
 
 =for Marpa::R3::Display
-name: Engine Synopsis Unambiguous Parse
+name: Landing page synopsis
 partial: 1
 normalize-whitespace: 1
 
-    my $recce = Marpa::R3::Recognizer->new( { grammar => $grammar } );
+          :discard ~ whitespace
+          whitespace ~ [\s]+
 
 =for Marpa::R3::Display::End
 
-C<Marpa::R3::Recognizer::new> creates a new recognizer.
+The C<:discard> rule is a pseudo-rule, which tells Marpa to use whatever
+it matches to separate G1 symbols,
+but otherwise to ignore it -- to "discard" it.
+C<whitespace> is defined in the next rule as a sequence of one or more spaces.
+
+Note the match operator ("C<~>") in the rule defining whitespace.
+It tells Marpa that this rule is lexical and
+should be interpreted exactly as written, character
+by character.
+
+The C<whitespace> rule is a special kind of rule in two respects.
+First, its RHS is followed by a quantifier ("C<+>"), which makes it
+a sequence rule.
+Aside from the quantifier,
+sequence rules may only have a single symbol or character class on their RHS.
+The plus quantifier ("C<+>") means a sequence of one or more items.
+The star quantifier ("C<*>") is also allowed, and it indicates a sequence of
+zero or more items.
+
+The whitespace items are defined by a character class: C<[\s]>.
+Marpa supports the same character classes, and the same character class syntax,
+as Perl does.
+
+The next pair of L0 rules define the C<Number> symbol
+
+=for Marpa::R3::Display
+name: Landing page synopsis
+partial: 1
+normalize-whitespace: 1
+
+          Number ~ digits
+          digits ~ [\d]+
+
+=for Marpa::R3::Display::End
+
+The above two rules say that a C<Number> is a sequence of one or more digits.
+C<Number> is a lexeme -- a G1 symbol which is defined and recognized at the lexical
+(L0) level.
+In this example, there are three other lexemes:
+C<whitespace>, and the addition and multiplication operators.
+
+We've already looked at
+the C<whitespace> lexeme, which will be discarded without being seen by G1.
+The addition and multiplication operators were defined with single quoted strings
+in the G1 rules.  As a reminder, here's the rule for C<Term> again:
+
+=for Marpa::R3::Display
+name: Landing page synopsis
+partial: 1
+normalize-whitespace: 1
+
+    Term ::=
+          Factor action => ::first
+        | Term '+' Term action => do_add
+
+=for Marpa::R3::Display::End
+
+In the above rule, the single-quoted string C<'+'> implicitly defines a L0 lexeme.
+Something similar happens with the C<'*'> string in the rule for a C<Factor>.
+
+The SLIF's lexer mostly "does what you mean".
+While the input is being read, it looks for all lexemes defined in the DSL.
+Almost always, you'll want Marpa to look only for tokens that are
+actually acceptable to the parse.
+Telling Marpa to do so was the purpose of this line:
+
+=for Marpa::R3::Display
+name: Landing page synopsis
+partial: 1
+normalize-whitespace: 1
+
+    lexeme default = latm => 1
+
+=for Marpa::R3::Display::End
+
+LATM means "longest acceptable tokens match".
+(LATM is not the default for historical reasons.)
+
+Among the acceptable tokens,
+Marpa looks for longest matches -- if multiple tokens match,
+the longest match is the winner.
+Marpa tolerates ambiguity,
+so one feature special to Marpa is that LATM is a longest acceptable B<tokens> match --
+if more than one token is longest, all of them are considered in the parse.
+The logic of SLIF lexing is described with more precision in the
+L<SLIF overview document|Marpa::R3::Scanless>.
+
+=head2 Marpa::R3::Scanless::R::new
+
+=for Marpa::R3::Display
+name: Landing page synopsis
+partial: 1
+normalize-whitespace: 1
+
+    my $recce = Marpa::R3::Scanless::R->new(
+        { grammar => $grammar, semantics_package => 'My_Actions' } );
+
+=for Marpa::R3::Display::End
+
+C<Marpa::R3::Scanless::R::new> creates a new SLIF recognizer.
 Its arguments are references to hashes of named arguments.
-In this example the only named argument is
+In this example the first named argument is
 the required argument: "C<grammar>".
 The value of the
 C<grammar>
-named argument must be a precomputed Marpa
+named argument must be a Marpa::R3 SLIF
 grammar.
 
-=head2 Marpa::R3::Recognizer::read
+The second argument is optional, but you will use it frequently.
+The "C<semantics_package>" named argument tells Marpa in which Perl package to
+look for the closures implementing the semantics for this grammar.
+We will talk more about this below.
+
+=head2 Marpa::R3::Scanless::R::read
 
 =for Marpa::R3::Display
-name: Engine Synopsis Unambiguous Parse
+name: Landing page synopsis
 partial: 1
 normalize-whitespace: 1
 
-    $recce->read( 'Number', 42 );
-    $recce->read('Multiply');
-    $recce->read( 'Number', 1 );
-    $recce->read('Add');
-    $recce->read( 'Number', 7 );
+    my $input = '42 * 1 + 7';
+    $recce->read( \$input );
 
 =for Marpa::R3::Display::End
 
-The C<Marpa::R3::Recognizer::read> method takes two arguments,
-a B<token name> and a B<token value>.
-The token name must be the name
-of a valid terminal symbol in the grammar.
-By default symbols are valid as terminal symbols,
-if and only if they do NOT occur on the LHS of
-any rule.
+To parse a string,
+we use 
+the C<Marpa::R3::Scanless::R::read()> method.
+In its simplest form,
+as here,
+the C<Marpa::R3::Scanless::R::read()> takes a reference
+to a string containing the input stream as its argument.
 
-The B<token value>
-must be a Perl scalar, but otherwise its form
-and semantics
-are entirely up to the application.
-If the token value is never used,
-it can be omitted.
-In the calculator example, the values of the
-"C<Add>"
-and "C<Multiply>" tokens are never used,
-and are allowed to default to a "whatever" value.
-
-=head2 Marpa::R3::Recognizer::value
+=head2 Marpa::R3::Scanless::R::value
 
 =for Marpa::R3::Display
-name: Engine Synopsis Unambiguous Parse
+name: Landing page synopsis
 partial: 1
 normalize-whitespace: 1
 
@@ -354,55 +410,182 @@ normalize-whitespace: 1
 
 =for Marpa::R3::Display::End
 
-The C<Marpa::R3::Recognizer::value> method returns
+The C<Marpa::R3::Scanless::R::value()> method returns
 a reference to the parse result's value,
 if there was a parse result.
 If there was no parse result,
-C<Marpa::R3::Recognizer::value>
+C<Marpa::R3::Scanless::R::value()>
 returns
 C<undef>.
 
-=head2 Resolving the semantics
+We have yet to describe how the Marpa SLIF computes the value
+of a parse.
+In fact,
+up to this point,
+we have been skipping everything that had to do
+with semantics.
+Now it is time to go back to those features.
 
-The first thing C<Marpa::R3::Recognizer::value> needs to do is
-to resolve the semantics.
-B<Resolving the semantics> means
-mapping the action names into actions.
-B<Actions> are Perl
-closures which directly implement semantics.
-In this example,
-the C<actions> named argument is specified.
-C<actions> is a Perl package name.
-Marpa will look for actions
-in that package.
+=head2 Semantics
+
+The value of the parse result, as returned via the C<value()> method,
+is determined by the parse's B<semantics>.
+Marpa's semantics are the traditional ones:
+The input is seen as a tree which takes its structure from the G1 rules.
+(This is why the G1 rules are called structural.)
+The value of the parse results from repeatedly evaluating nodes of this
+tree, starting at the bottom, with the results of child nodes made available
+to their parent node when the parent node is evaluated.
+
+Parse trees are usually drawn upside-down
+with their root at the top,
+and their "leaves" at the bottom.
+In Marpa::R3's SLIF, the "leaves" are the symbols
+that the G1 (structural) rules share with the L0 (lexical)
+rules.
+The symbols shared by L0 and G1
+are those lexemes which are not
+discarded.
+In this example, the lexemes visible to G1 are
+C<Number> and two operators
+which are specified
+with a quoted string:
+"C<+>"
+and
+"C<*>".
+
+Marpa assigns values to the nodes of the tree,
+starting with the leaves.
+Marpa's "leaves" will always be L0 symbols,
+and their value by default is the literal
+value at their location in the input stream.
+In the case of the two operators described
+by quoted string,
+the value is that quoted string.
+That is, the value of 'C<+>' is
+'C<+>',
+and the value of 'C<*>' is
+'C<*>'.
+The value of C<Number> will be the portion
+of the input that matched the C<[\d]+>
+pattern.
+
+Starting with the values for leaves,
+Marpa::R3 moves recursively
+"up" the tree to its root,
+assigning a value to each node of the tree
+based on the value of its child nodes.
+Each non-leaf node corresponds to a G1 rule,
+and the children of the non-leaf node
+correspond to the RHS symbols
+of the rule.
+When the non-leaf node is valued, its value becomes
+the value of its LHS symbol,
+and this value will become
+the value of
+a RHS symbol of another node with one
+exception.
+
+The one exception, the node with a LHS symbol
+that does not become a RHS
+symbol,
+is the value of the top (or "root") node.
+The value of the top node becomes the
+value of the parse,
+and this is the parse result value
+to which the C<value()> method
+returns a reference.
 
 =for Marpa::R3::Display
-name: Engine Synopsis Unambiguous Parse
+name: Landing page synopsis
 partial: 1
 normalize-whitespace: 1
 
-    actions => 'My_Actions',
+    :default ::= action => [name,values]
 
 =for Marpa::R3::Display::End
+
+Each non-leaf node determines its value with an action.
+The default pseudo-rule allows you to specify the default action.
+(It is a pseudo-rule because its LHS, "C<:default>", is a pseudo-symbol,
+not a real one.)
+Often actions are Perl functions, which in this context are
+called Perl semantic closures.
 
 =for Marpa::R3::Display
-name: Engine Synopsis Unambiguous Parse
+name: Landing page synopsis
 partial: 1
 normalize-whitespace: 1
-flatten: 1
 
-    { lhs => 'Factor', rhs => [qw/Factor Multiply Factor/], action => 'do_multiply' },
+    my $recce = Marpa::R3::Scanless::R->new(
+        { grammar => $grammar, semantics_package => 'My_Actions' } );
 
 =for Marpa::R3::Display::End
 
-For example, the C<action> property for the above rule
-is "C<do_multiply>" and the C<actions> named argument to the grammar
-was "C<My_Actions>".
-So Marpa looks for a closure whose fully qualified name is C<My_Actions::do_multiply>,
+Above we saw the C<semantics_package> named argument used when
+constructing the SLIF recognizer.
+As we noted, this specifies the package that is used
+to find the Perl semantic closures.
+
+In this example the default semantics,
+as specified by the C<default_action> named argument,
+come from a "array descriptor" named "C<[name,values]>".
+This indicates that, by default, the value of a rule is to be
+a reference to an array consisting of the rule's name,
+followed by the values of its children.
+
+In this case,
+the semantics is not actually used,
+and you would usually change it to something more convenient
+for your application.
+But "C<[name,values]>" is an excellent starting point when you're
+first developing a DSL and, since this code is intended as a
+template, we've kept it.
+For more about array descriptors, see the L<semantics
+document|Marpa::R3::Semantics/"Array descriptor actions">
+
+The other way we specify semantics in this example
+is by using an
+C<action> adverb
+for a RHS alternative.
+We've seen the C<action> adverb several times,
+but skipped over it.
+Now it is time to look at it.
+
+=for Marpa::R3::Display
+name: Landing page synopsis
+partial: 1
+normalize-whitespace: 1
+
+    Term ::=
+          Factor action => ::first
+        | Term '+' Term action => do_add
+    Factor ::=
+          Number action => ::first
+        | Factor '*' Factor action => do_multiply
+
+=for Marpa::R3::Display::End
+
+The "C<::first>" action indicates that the value of a rule is to be
+the value of its first child,
+that is, the value corresponding to the first symbol of the rule's RHS.
+(In the case of an empty rule, the value would be a Perl C<undef>).
+(The initial double colon indicates a reserved action.)
+
+The action for the second RHS alternative defining C<Term> is C<do_add>,
+and the action for the second RHS alternative defining C<Factor> is C<do_multiply>.
+To implement these actions, we need to "resolve" their names --
+map the action names into 
+the Perl closures which actually carry out the semantics.
+
+The C<semantics_package> specified the package where we can find the actions:
+"C<My_Actions>".
+So, to resolve the C<do_multiply> action,
+Marpa looks for a closure whose fully qualified name is C<My_Actions::do_multiply>,
 which it finds:
 
 =for Marpa::R3::Display
-name: Engine Synopsis Unambiguous Parse
+name: Landing page synopsis
 partial: 1
 normalize-whitespace: 1
 
@@ -413,56 +596,12 @@ normalize-whitespace: 1
 
 =for Marpa::R3::Display::End
 
-Rules do not always have C<action> properties.
-That is the case with these rules in this example:
+The C<do_add> action is resolved
+to a Perl semantic closure
+in much the same way:
 
 =for Marpa::R3::Display
-name: Engine Synopsis Unambiguous Parse
-partial: 1
-normalize-whitespace: 1
-
-    { lhs => 'Expression', rhs => [qw/Term/] },
-    { lhs => 'Term', rhs => [qw/Factor/] },
-    { lhs => 'Factor', rhs => [qw/Number/] },
-
-=for Marpa::R3::Display::End
-
-The rules in the above display have no action names.
-When a rule has no action name,
-Marpa will fall back to trying to use
-the default action,
-as described next.
-
-=for Marpa::R3::Display
-name: Engine Synopsis Unambiguous Parse
-partial: 1
-normalize-whitespace: 1
-
-    default_action => 'first_arg',
-
-=for Marpa::R3::Display::End
-
-The C<default_action> named argument is resolved in the same way
-as are the C<action> properties of the
-rules.
-In this example,
-default_action is specified as "C<first_arg>"
-and resolves to
-C<My_Actions::first_arg>.
-
-=head2 Actions
-
-=for Marpa::R3::Display
-name: Engine Synopsis Unambiguous Parse
-partial: 1
-normalize-whitespace: 1
-
-    sub My_Actions::first_arg { shift; return shift; }
-
-=for Marpa::R3::Display::End
-
-=for Marpa::R3::Display
-name: Engine Synopsis Unambiguous Parse
+name: Landing page synopsis
 partial: 1
 normalize-whitespace: 1
 
@@ -473,19 +612,15 @@ normalize-whitespace: 1
 
 =for Marpa::R3::Display::End
 
-Value actions are Perl closures used as callbacks.
-Value actions are called when nodes in a parse tree are evaluated.
-A value action receives one or more arguments.
+The Perl semantic closures are callbacks.
+They are called as each node in a parse tree is evaluated.
+
+Each Perl semantic closure is called with one or more arguments.
 The first argument to a value action is always a per-parse-tree
 object, which the callbacks can use as a scratchpad.
-In these examples, the per-parse-tree object is not used.
-
-For a non-empty rule,
-the second and any subsequent arguments to the callback are
-the values,
-in lexical order,
-of the symbols on the right hand side of
-the rule.
+In this example, the per-parse-tree object is not used.
+The remaining arguments will be the values of the node's "children" --
+in other words, the values computed for each of its RHS symbols, in order.
 If the action is for an empty rule,
 the per-parse-tree object will be its only argument.
 
@@ -497,126 +632,32 @@ The exception is the value for the start rule.
 The return value for the start rule becomes
 the parse result.
 
-Rules with no action specified for them take their
-semantics from the C<default_action> named argument.
-If there is no default action for a grammar,
-rules with no action specified for them
-return a "whatever" value --
-an arbitrary value which should not be used.
+=head1 Tainted data
 
-=head1 Example 2: an ambiguous parse
+Marpa::R3 exists to allow its input to alter execution in
+flexible and powerful ways.
+Marpa should not be used with untrusted input.
+In Perl' s taint mode, it is a fatal error to use Marpa's SLIF
+interface
+with a tainted grammar, a tainted input string,
+or tainted token values.
 
-This is the same calculator as before,
-rewritten to be ambiguous.
-Rather than give multiplication precedence over
-addition,
-the rewritten calculator allows any order of operations.
-In this example,
-the actions (C<My_Actions::do_add>, etc.)
-and the C<@tokens> array remain
-the same as before.
+=head1 Threads
 
-Eliminating precedence makes the grammar shorter,
-but it also means there can be multiple parse trees,
-and that the different parse trees can have different parse results.
-In this application we decide, for each input,
-to return every one of the parse results.
+When used in a thread-safe Perl, Marpa::R3 should be thread-safe,
+with one important restriction:
+All Marpa objects that share the same grammar must be created
+and used within a single thread.
 
-=for Marpa::R3::Display
-name: Engine Synopsis Ambiguous Parse
-normalize-whitespace: 1
-
-    use Marpa::R3;
-
-    my $ambiguous_grammar = Marpa::R3::Grammar->new(
-        {   start   => 'E',
-            actions => 'My_Actions',
-            rules   => [
-                [ 'E', [qw/E Add E/],      'do_add' ],
-                [ 'E', [qw/E Multiply E/], 'do_multiply' ],
-                [ 'E', [qw/Number/],       ],
-            ],
-            default_action => 'first_arg',
-        }
-    );
-
-    $ambiguous_grammar->precompute();
-
-    my $ambiguous_recce =
-        Marpa::R3::Recognizer->new( { grammar => $ambiguous_grammar } );
-
-    $ambiguous_recce->read( 'Number', 42 );
-    $ambiguous_recce->read('Multiply');
-    $ambiguous_recce->read( 'Number', 1 );
-    $ambiguous_recce->read('Add');
-    $ambiguous_recce->read( 'Number', 7 );
-
-    my @values = ();
-    while ( defined( my $ambiguous_value_ref = $ambiguous_recce->value() ) ) {
-        push @values, ${$ambiguous_value_ref};
-    }
-
-=for Marpa::R3::Display::End
-
-=head2 Short form rule descriptors
-
-=for Marpa::R3::Display
-name: Engine Synopsis Ambiguous Parse
-partial: 1
-normalize-whitespace: 1
-
-    rules => [
-        [ 'E', [qw/E Add E/],      'do_add' ],
-        [ 'E', [qw/E Multiply E/], 'do_multiply' ],
-        [ 'E', [qw/Number/], ],
-    ],
-
-=for Marpa::R3::Display::End
-
-The rule descriptors in the
-ambiguous example demonstrate the "short" or array form of rule
-descriptors.
-Array form rule descriptors are references to arrays.
-Here the elements are, in order,
-the C<lhs> property,
-the C<rhs> property,
-and the C<action> property.
-
-=head2 Marpa::R3::Recognizer::value
-
-=for Marpa::R3::Display
-name: Engine Synopsis Ambiguous Parse
-partial: 1
-normalize-whitespace: 1
-
-    my @values = ();
-    while ( defined( my $ambiguous_value_ref = $ambiguous_recce->value() ) ) {
-        push @values, ${$ambiguous_value_ref};
-    }
-
-=for Marpa::R3::Display::End
-
-When called more than once,
-the C<Marpa::R3::Recognizer::value> method iterates through the parse results.
-For each call,
-it returns a reference to the parse result.
-At the end of the iteration, after
-all parse results have been returned,
-C<Marpa::R3::Recognizer::value> returns C<undef>.
-If there were no parse results,
-C<Marpa::R3::Recognizer::value> returns C<undef> the first
-time that it is called.
-
-=head1 Errors and exceptions
-
-Methods in the Marpa API do not return errors.
-When there are errors,
-Marpa API methods throw an exception.
-
-=head1 Inheritance
-
-Classes in the Marpa API are not designed to
-be inherited.
+This restriction may be lifted someday, but
+in practice it does not seem onerous.
+Note that 
+you can use
+the same grammar in different
+threads by creating grammars
+that are exact
+copies of each other,
+one grammar per thread.
 
 =head1 The Marpa:: namespace
 
@@ -635,13 +676,33 @@ DBI, LWP and Moose.
 
 =head1 Other documents
 
-This document gives a semi-tutorial overview of the entire Marpa API.
-For full details on Marpa's grammar objects and their methods,
-see the
-L<Marpa::R3::Grammar> document.
-For full details on Marpa's recognizer objects and their methods,
-see the
-L<Marpa::R3::Recognizer> document.
+This document gives a semi-tutorial overview of Marpa's Scanless interface (SLIF).
+For more details about the SLIF,
+there is an
+L<overview|Marpa::R3::Scanless>,
+and pages describing
+L<its DSL|Marpa::R3::Scanless::DSL>,
+L<its grammar methods|Marpa::R3::Scanless::G>,
+and
+L<its recognizer methods|Marpa::R3::Scanless::R>.
+
+Marpa has two other interfaces.
+L<The thin
+interface|Marpa::R3::Advanced::Thin>
+provides direct access to the underlying
+Libmarpa C library.
+Of the Perl interfaces to Marpa,
+the thin interface is the most low-level.
+The thin interface offers efficient access to the full power of the
+Marpa parse engine,
+but it requires the application to do a lot of the work itself.
+
+Now discouraged,
+the L<named argument inteface (NAIF)|Marpa::R3::NAIF>
+was Marpa::R3's first interface.
+It is a more traditional,
+middle level interface which uses Perl calls
+instead of a DSL.
 
 L<Marpa::R3::Vocabulary> is intended as a quick refresher in
 parsing terminology,
@@ -696,7 +757,7 @@ L<The Support document|Marpa::R3::Support> has details.
 =for Marpa::R3::Display
 ignore: 1
 
-  Copyright 2013 Jeffrey Kegler
+  Copyright 2014 Jeffrey Kegler
   This file is part of Marpa::R3.  Marpa::R3 is free software: you can
   redistribute it and/or modify it under the terms of the GNU Lesser
   General Public License as published by the Free Software Foundation,

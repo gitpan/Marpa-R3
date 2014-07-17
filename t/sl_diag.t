@@ -1,5 +1,5 @@
 #!perl
-# Copyright 2013 Jeffrey Kegler
+# Copyright 2014 Jeffrey Kegler
 # This file is part of Marpa::R3.  Marpa::R3 is free software: you can
 # redistribute it and/or modify it under the terms of the GNU Lesser
 # General Public License as published by the Free Software Foundation,
@@ -20,17 +20,13 @@ use 5.010;
 use strict;
 use warnings;
 
-use Test::More tests => 3;
+use Test::More tests => 12;
 use English qw( -no_match_vars );
 use lib 'inc';
 use Marpa::R3::Test;
 use Marpa::R3;
 
-my $prefix_grammar = Marpa::R3::Scanless::G->new(
-    {
-        action_object        => 'My_Actions',
-        default_action => 'do_arg0',
-        source          => \(<<'END_OF_RULES'),
+my $grammar = <<'END_OF_RULES';
 :start ::= Script
 Script ::= Calculation* action => do_list
 Calculation ::= Expression | ('say') Expression
@@ -50,15 +46,88 @@ whitespace ~ [\s]+
 <vertical space char> ~ [\x{A}\x{B}\x{C}\x{D}\x{2028}\x{2029}]
 <hash comment char> ~ [^\x{A}\x{B}\x{C}\x{D}\x{2028}\x{2029}]
 END_OF_RULES
+
+my $slg = Marpa::R3::Scanless::G->new(
+    {   action_object  => 'My_Actions',
+        default_action => 'do_arg0',
+        source => \$grammar,
     }
 );
 
+my $g0_rules_description;
+
+# Marpa::R3::Display
+# name: Scanless g0_rule() synopsis
+
+    my @g0_rule_ids = $slg->g0_rule_ids();
+    for my $g0_rule_id (@g0_rule_ids) {
+        $g0_rules_description .= "$g0_rule_id "
+            . ( join q{ }, map {"<$_>"} $slg->g0_rule($g0_rule_id) ) . "\n";
+    }
+
+# Marpa::R3::Display::End
+
+Marpa::R3::Test::is(
+    $g0_rules_description,
+    <<'END_OF_DESCRIPTION',
+0 <[Lex-0]> <[[s]]> <[[a]]> <[[y]]>
+1 <[Lex-1]> <[[\+]]>
+2 <Number> <[[\d]]>
+3 <[:discard]> <whitespace>
+4 <whitespace> <[[\s]]>
+5 <[:discard]> <hash comment>
+6 <hash comment> <terminated hash comment>
+7 <hash comment> <unterminated final hash comment>
+8 <terminated hash comment> <[[\#]]> <hash comment body> <vertical space char>
+9 <unterminated final hash comment> <[[\#]]> <hash comment body>
+10 <hash comment body> <hash comment char>
+11 <vertical space char> <[[\x{A}\x{B}\x{C}\x{D}\x{2028}\x{2029}]]>
+12 <hash comment char> <[[^\x{A}\x{B}\x{C}\x{D}\x{2028}\x{2029}]]>
+13 <[:start_lex]> <Number>
+14 <[:start_lex]> <[:discard]>
+15 <[:start_lex]> <[Lex-0]>
+16 <[:start_lex]> <[Lex-1]>
+END_OF_DESCRIPTION
+    'g0_rule_ids() and g0_rule()'
+);
+
+my $g1_rules_description;
+
+# Marpa::R3::Display
+# name: Scanless rule() synopsis
+
+    my @g1_rule_ids = $slg->g1_rule_ids();
+    for my $g1_rule_id (@g1_rule_ids) {
+        $g1_rules_description .= "$g1_rule_id "
+            . ( join q{ }, map {"<$_>"} $slg->rule($g1_rule_id) ) . "\n";
+    }
+
+# Marpa::R3::Display::End
+
+Marpa::R3::Test::is(
+    $g1_rules_description,
+    <<'END_OF_DESCRIPTION',
+0 <Script> <Calculation>
+1 <Calculation> <Expression>
+2 <Calculation> <[Lex-0]> <Expression>
+3 <Expression> <Number>
+4 <Expression> <[Lex-1]> <Expression> <Expression>
+5 <[:start]> <Script>
+END_OF_DESCRIPTION
+    'g1_rule_ids() and rule()'
+);
+
 package My_Actions;
+# The SELF object is a very awkward way of specifying the per-parse
+# argument directly, one which was necessary before the $slr->value()
+# method took an argument.
+# This way of doing things is discourage and preserved here for testing purposes.
 our $SELF;
 sub new { return $SELF }
+
 sub do_list {
-    my ($self, @results) = @_;
-    return +(scalar @results) . ' results: ' . join q{ }, @results;
+    my ( $self, @results ) = @_;
+    return +( scalar @results ) . ' results: ' . join q{ }, @results;
 }
 
 sub do_add  { shift; return $_[0] + $_[1] }
@@ -66,7 +135,7 @@ sub do_arg0 { shift; return shift; }
 
 sub show_last_expression {
     my ($self) = @_;
-    my $slr = $self->{slr};
+    my $slr = $self->{recce};
     my ( $start, $end ) = $slr->last_completed_range('Expression');
     return if not defined $start;
     my $last_expression = $slr->range_to_string( $start, $end );
@@ -84,9 +153,10 @@ sub my_parser {
     my $trace_output = q{};
     open my $trace_fh, q{>}, \$trace_output;
     my $recce = Marpa::R3::Scanless::R->new(
-        {   grammar           => $grammar,
-            trace_terminals   => 1,
-            trace_file_handle => $trace_fh
+        {   grammar               => $grammar,
+            trace_terminals       => 2,
+            trace_file_handle     => $trace_fh,
+            too_many_earley_items => 100,         # test this
         }
     );
     $self->{recce} = $recce;
@@ -99,7 +169,6 @@ sub my_parser {
         my $abbreviated_error = $EVAL_ERROR;
         chomp $abbreviated_error;
         $abbreviated_error =~ s/\n.*//xms;
-        $abbreviated_error =~ s/^Error \s+ in \s+ string_read: \s+ //xms;
         die $self->show_last_expression(), $EVAL_ERROR;
     } ## end if ( not defined $eval_ok )
     my $value_ref = $recce->value;
@@ -112,7 +181,7 @@ sub my_parser {
 } ## end sub my_parser
 
 my @tests_data = (
-    [ '+++ 1 2 3 + + 1 2 4',     '1 results: 13', 'Parse OK', 'entire input' ],
+    [ '+++ 1 2 3 + + 1 2 4', '1 results: 13', 'Parse OK', 'entire input' ],
 );
 
 TEST:
@@ -120,45 +189,169 @@ for my $test_data (@tests_data) {
     my ($test_string,     $expected_value,
         $expected_result, $expected_last_expression
     ) = @{$test_data};
-    my ( $recce, $actual_value, $trace_output ) =
-        my_parser( $prefix_grammar, $test_string );
+    my ( $slr, $actual_value, $trace_output ) =
+        my_parser( $slg, $test_string );
+
+# Marpa::R3::Display
+# name: Scanless terminals_expected() synopsis
+
+    my @terminals_expected = @{$slr->terminals_expected()};
+
+# Marpa::R3::Display::End
+
+    Marpa::R3::Test::is(
+        ( join q{ }, sort @terminals_expected ),
+        'Number [Lex-0] [Lex-1]',
+        qq{SLIF terminals_expected()}
+    );
 
 # Marpa::R3::Display
 # name: Scanless show_progress() synopsis
 
-    my $show_progress_output = $recce->show_progress();
+    my $show_progress_output = $slr->show_progress();
 
 # Marpa::R3::Display::End
 
     Marpa::R3::Test::is( $show_progress_output,
         <<'END_OF_EXPECTED_OUTPUT', qq{Scanless show_progess()} );
-F0 @0-11 [:start] -> Script .
-P1 @0-11 Script -> . Calculation*
-F1 @0-11 Script -> Calculation* .
-P2 @11-11 Calculation -> . Expression
-F2 @0-11 Calculation -> Expression .
-P3 @11-11 Calculation -> . [Lex-0] Expression
-P4 @11-11 Expression -> . Number
-F4 @10-11 Expression -> Number .
-P5 @11-11 Expression -> . [Lex-1] Expression Expression
-F5 x3 @0,6,10-11 Expression -> [Lex-1] Expression Expression .
+P0 @0-11 L1c1-19 Script -> . Calculation *
+F0 @0-11 L1c1-19 Script -> Calculation * .
+P1 @11-11 L1c19 Calculation -> . Expression
+F1 @0-11 L1c1-19 Calculation -> Expression .
+P2 @11-11 L1c19 Calculation -> . 'say' Expression
+P3 @11-11 L1c19 Expression -> . Number
+F3 @10-11 L1c17-19 Expression -> Number .
+P4 @11-11 L1c19 Expression -> . '+' Expression Expression
+F4 x3 @0,6,10-11 L1c1-19 Expression -> '+' Expression Expression .
+F5 @0-11 L1c1-19 :start -> Script .
 END_OF_EXPECTED_OUTPUT
 
-    Test::More::is( $actual_value, $expected_value,
+    Marpa::R3::Test::is( $actual_value, $expected_value,
         qq{Value of "$test_string"} );
-    Test::More::is( $trace_output, <<'END_OF_OUTPUT', qq{Trace output} );
-Found lexemes @0-1: [Lex-1]; value="+"
-Found lexemes @1-2: [Lex-1]; value="+"
-Found lexemes @2-3: [Lex-1]; value="+"
-Found lexemes @4-5: Number; value="1"
-Found lexemes @6-7: Number; value="2"
-Found lexemes @8-9: Number; value="3"
-Found lexemes @10-11: [Lex-1]; value="+"
-Found lexemes @12-13: [Lex-1]; value="+"
-Found lexemes @14-15: Number; value="1"
-Found lexemes @16-17: Number; value="2"
-Found lexemes @18-19: Number; value="4"
+    Marpa::R3::Test::is( $trace_output,
+        <<'END_OF_OUTPUT', qq{Trace output for "$test_string"} );
+Setting trace_terminals option
+Expecting "Number" at earleme 0
+Expecting "[Lex-0]" at earleme 0
+Expecting "[Lex-1]" at earleme 0
+Lexer "L0" registering character U+002b '+' as symbol 5: [\+]
+Lexer "L0" registering character U+002b '+' as symbol 9: [^\x{A}\x{B}\x{C}\x{D}\x{2028}\x{2029}]
+Lexer "L0" accepted lexeme L1c1: '+'; value="+"
+Lexer "L0" accepted lexeme L1c2: '+'; value="+"
+Lexer "L0" accepted lexeme L1c3: '+'; value="+"
+Lexer "L0" registering character U+0020 as symbol 7: [\s]
+Lexer "L0" registering character U+0020 as symbol 9: [^\x{A}\x{B}\x{C}\x{D}\x{2028}\x{2029}]
+Lexer "L0" registering character U+0031 '1' as symbol 6: [\d]
+Lexer "L0" registering character U+0031 '1' as symbol 9: [^\x{A}\x{B}\x{C}\x{D}\x{2028}\x{2029}]
+Lexer "L0" discarded lexeme L1c4: whitespace
+Lexer "L0" accepted lexeme L1c5: Number; value="1"
+Lexer "L0" registering character U+0032 '2' as symbol 6: [\d]
+Lexer "L0" registering character U+0032 '2' as symbol 9: [^\x{A}\x{B}\x{C}\x{D}\x{2028}\x{2029}]
+Lexer "L0" discarded lexeme L1c6: whitespace
+Lexer "L0" accepted lexeme L1c7: Number; value="2"
+Lexer "L0" registering character U+0033 '3' as symbol 6: [\d]
+Lexer "L0" registering character U+0033 '3' as symbol 9: [^\x{A}\x{B}\x{C}\x{D}\x{2028}\x{2029}]
+Lexer "L0" discarded lexeme L1c8: whitespace
+Lexer "L0" accepted lexeme L1c9: Number; value="3"
+Lexer "L0" discarded lexeme L1c10: whitespace
+Lexer "L0" accepted lexeme L1c11: '+'; value="+"
+Lexer "L0" discarded lexeme L1c12: whitespace
+Lexer "L0" accepted lexeme L1c13: '+'; value="+"
+Lexer "L0" discarded lexeme L1c14: whitespace
+Lexer "L0" accepted lexeme L1c15: Number; value="1"
+Lexer "L0" discarded lexeme L1c16: whitespace
+Lexer "L0" accepted lexeme L1c17: Number; value="2"
+Lexer "L0" registering character U+0034 '4' as symbol 6: [\d]
+Lexer "L0" registering character U+0034 '4' as symbol 9: [^\x{A}\x{B}\x{C}\x{D}\x{2028}\x{2029}]
+Lexer "L0" discarded lexeme L1c18: whitespace
+Lexer "L0" accepted lexeme L1c19: Number; value="4"
 END_OF_OUTPUT
-} ## end for my $test_data (@tests_data)
+
+    my $expected_progress_output = [
+        [ 0, -1, 0 ],
+        [ 1, -1, 0 ],
+        [ 3, -1, 10 ],
+        [ 4, -1, 0 ],
+        [ 4, -1, 6 ],
+        [ 4, -1, 10 ],
+        [ 5, -1, 0 ],
+        [ 0, 0,  0 ],
+        [ 1, 0,  11 ],
+        [ 2, 0,  11 ],
+        [ 3, 0,  11 ],
+        [ 4, 0,  11 ],
+    ];
+
+# Marpa::R3::Display
+# name: Scanless progress() synopsis
+
+    my $progress_output = $slr->progress();
+
+# Marpa::R3::Display::End
+
+    Marpa::R3::Test::is(
+        Data::Dumper::Dumper($progress_output),
+        Data::Dumper::Dumper($expected_progress_output),
+        qq{Scanless progress()}
+    );
+
+    my $latest_g1_location = $slr->latest_g1_location();
+    Test::More::is( $latest_g1_location, 11, qq{Scanless latest_g1_location()} );
+
+# Marpa::R3::Display
+# name: Scanless current_g1_location() synopsis
+
+    my $current_g1_location = $slr->current_g1_location();
+
+# Marpa::R3::Display::End
+
+    Test::More::is( $current_g1_location, 11, qq{Scanless current_g1_location()} );
+
+# Marpa::R3::Display
+# name: SLIF pos() example
+
+    my $pos = $slr->pos();
+
+# Marpa::R3::Display::End
+
+    Test::More::is( $pos, 19, qq{Scanless pos()} );
+
+# Marpa::R3::Display
+# name: SLIF input_length() example
+
+    my $input_length = $slr->input_length();
+
+# Marpa::R3::Display::End
+
+    Test::More::is( $input_length, 19, qq{Scanless input_length()} );
+
+    # Test translation from G1 location to input stream spans
+    my %location_seen = ();
+    my @spans         = ();
+    for my $g1_location (
+        sort { $a <=> $b }
+        grep { !$location_seen{$_}++; } map { $_->[-1] } @{$progress_output}
+        )
+    {
+
+# Marpa::R3::Display
+# name: Scanless g1_location_to_span() synopsis
+
+        my ( $span_start, $span_length ) =
+            $slr->g1_location_to_span($g1_location);
+
+# Marpa::R3::Display::End
+
+        push @spans, [ $g1_location, $span_start, $span_length ];
+    } ## end for my $g1_location ( sort { $a <=> $b } grep { !$location_seen...})
+
+    # One result for each unique G1 location in progress report
+    # Format of each result is [g1_location, span_start, span_length]
+    my $expected_spans =
+        [ [ 0, 0, 0 ], [ 6, 8, 1 ], [ 10, 16, 1 ], [ 11, 18, 1 ] ];
+    Test::More::is_deeply( \@spans, $expected_spans,
+        qq{Scanless g1_location_to_span()} );
+
+} ## end TEST: for my $test_data (@tests_data)
 
 # vim: expandtab shiftwidth=4:

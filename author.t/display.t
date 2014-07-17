@@ -1,5 +1,5 @@
 #!perl
-# Copyright 2013 Jeffrey Kegler
+# Copyright 2014 Jeffrey Kegler
 # This file is part of Marpa::R3.  Marpa::R3 is free software: you can
 # redistribute it and/or modify it under the terms of the GNU Lesser
 # General Public License as published by the Free Software Foundation,
@@ -38,12 +38,8 @@ my $options_result = GetOptions( 'warnings' => \$warnings );
 Marpa::R3::exception("$PROGRAM_NAME options parsing failed")
     if not $options_result;
 
-my %exclude = map { ( $_, 1 ) } qw(
-    Makefile.PL
-);
-
-my @additional_files = qw(
-);
+my %exclude = map { ( $_, 1 ) } qw();
+my @additional_files = qw();
 
 my @test_files = @ARGV;
 my $debug_mode = scalar @test_files;
@@ -179,14 +175,18 @@ sub compare {
     if ( $copy->{partial} ) {
         return 1 if -1 != index ${$formatted_original}, ${$formatted_copy};
         Test::More::diag(
-            $copy->{filename},
-            ' vs. ',
+            "Partial: ",
             $original->{filename},
+            ' vs. ',
+            $copy->{filename},
             "\n",
-            "Sought Substring:\n",
-            Text::Wrap::wrap( q{    }, q{    }, ${$formatted_copy} ),
-            "\nOriginal:\n",
-            Text::Wrap::wrap( q{    }, q{    }, ${$formatted_original} )
+            (   Text::Diff::diff $formatted_original,
+                $formatted_copy,
+                { STYLE => 'Table' }
+            )
+            # Text::Wrap::wrap( q{    }, q{    }, ${$formatted_copy} ),
+            # "\nOriginal:\n",
+            # Text::Wrap::wrap( q{    }, q{    }, ${$formatted_original} )
         );
         return 0;
     } ## end if ( $copy->{partial} )
@@ -261,3 +261,5 @@ VERBATIM_FILE: for my $verbatim_file ( keys %{$verbatim_by_file} ) {
 Test::More::done_testing($tests_run);
 
 __END__
+
+# vim: set expandtab shiftwidth=4:

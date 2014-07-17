@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-# Copyright 2013 Jeffrey Kegler
+# Copyright 2014 Jeffrey Kegler
 # This file is part of Marpa::R3.  Marpa::R3 is free software: you can
 # redistribute it and/or modify it under the terms of the GNU Lesser
 # General Public License as published by the Free Software Foundation,
@@ -96,11 +96,12 @@ my %lexical_class = (
     'article_lex'        => 'a an',
 );
 my %vocabulary = ();
-while ( my ( $lexical_class, $words ) = each %lexical_class ) {
+for my $lexical_class (keys %lexical_class) {
+    my $words = $lexical_class{$lexical_class};
     for my $word ( split q{ }, $words ) {
         push @{ $vocabulary{$word} }, $lexical_class;
     }
-}
+} ## end for my $lexical_class (%lexical_class)
 
 for my $data ( 'time flies like an arrow', 'fruit flies like a banana' ) {
 
