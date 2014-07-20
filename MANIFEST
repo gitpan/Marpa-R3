@@ -17,7 +17,7 @@
 .gdbinit
 .gitattributes
 .gitignore
-Build.PL
+Makefile.PL
 COPYING.LESSER
 Changes
 INSTALL
@@ -46,6 +46,7 @@ core/LOG_DATA
 core/README
 core/SHARED
 core/STATIC
+core/cf/write_makefile.pl
 core/read_only/AUTHORS
 core/read_only/COPYING.LESSER
 core/read_only/ChangeLog
@@ -135,7 +136,6 @@ html/t/synopsis.t
 html/t/tang.t
 html/t/test.html
 html/tool/lib/Marpa/R3/HTML/Test/Util.pm
-inc/Marpa/R3/Build_Me.pm
 inc/Marpa/R3/Config.pm
 inc/Marpa/R3/Display.pm
 inc/Marpa/R3/License.pm
@@ -280,7 +280,7 @@ t/thin_deprec.t
 t/thin_eq.t
 t/timeflies.t
 t/use.t
-typemap
+xs/typemap
 xs/.gitignore
 xs/Makefile
 xs/R3.xs
