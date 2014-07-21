@@ -31,7 +31,7 @@ use Config;
 use ExtUtils::MakeMaker;
 
 use vars qw($VERSION $STRING_VERSION);
-$VERSION        = '3.003_001';
+$VERSION        = '3.003_002';
 $STRING_VERSION = $VERSION;
 ## no critic (BuiltinFunctions::ProhibitStringyEval)
 $VERSION = eval $VERSION;
@@ -357,7 +357,7 @@ my @files_to_cleanup = (
     'lib/Marpa/R3/Version.pm',           'pperl/Marpa/R3/Perl/Version.pm',
     'html/lib/Marpa/R3/Test/Version.pm', 'lib/Marpa/R3/Installed.pm',
     'pperl/Marpa/R3/Perl/Installed.pm',  'lib/Marpa/R3.o',
-    'core/gnu_ac_build',                 'core/perl_ac_build',
+    'kollos/gnu_ac_build',                 'kollos/perl_ac_build',
 );
 
 { no strict 'refs';
@@ -406,11 +406,12 @@ WriteMakefile(
 
     test => { RECURSIVE_TEST_FILES => 1 }
 
-        # getoptions => { Dev => {}, 'Marpa-debug' => {} },
 );
 
 my @debug_flags            = ();
 my @configure_command_args = ();
+push @configure_command_args, qw(--with-pic --disable-shared);
+
 if ($libmarpa_debug) {
     if ( defined $ENV{LIBMARPA_CFLAGS} ) {
         $ENV{CFLAGS} = $ENV{LIBMARPA_CFLAGS};
@@ -424,23 +425,22 @@ if ($libmarpa_debug) {
 
 # As of this writing, only used by Config::AutoConf logic,
 # but that may change.
-my $libmarpa_version = file_slurp(qw(core read_only LIB_VERSION));
+my $libmarpa_version = file_slurp(qw(kollos read_only LIB_VERSION));
 chomp $libmarpa_version;
 my @libmarpa_version = split /[.]/xms, $libmarpa_version;
 
 my $cwd = Cwd::getcwd();
 if ($use_perl_autoconf) {
-    my $from_dir  = File::Spec->catdir(qw(core read_only));
-    my $build_dir = File::Spec->catdir(qw(core perl_ac_build));
+    my $from_dir  = File::Spec->catdir(qw(kollos read_only));
+    my $build_dir = File::Spec->catdir(qw(kollos perl_ac_build));
     ExtUtils::Install::install(
         [   from_to => { $from_dir => $build_dir, },
             verbose => 1
         ]
     );
 
-    $DB::single = 1;
     my $src_makefile_writer = do {
-        my $cf_dir = File::Spec->catdir(qw(core cf));
+        my $cf_dir = File::Spec->catdir(qw(kollos cf));
         File::Spec->catfile( $cf_dir, 'write_makefile.pl' );
     };
     my $dest_makefile_pl = File::Spec->catfile( $build_dir, 'Makefile.PL' );
@@ -557,8 +557,8 @@ INLINEHOOK
     }
 } ## end if ($use_perl_autoconf)
 else {
-    my $from_dir = File::Spec->catdir(qw(core read_only));
-    my $build_dir   = File::Spec->catdir(qw(core gnu_ac_build));
+    my $from_dir = File::Spec->catdir(qw(kollos read_only));
+    my $build_dir   = File::Spec->catdir(qw(kollos gnu_ac_build));
     ExtUtils::Install::install(
         [ from_to => { $from_dir => $build_dir }, verbose => 1 ] );
     my $stamp_file = 'stamp-h1';
@@ -590,13 +590,13 @@ chdir $cwd;
 sub top_postamble {
     my $postamble = (
         $use_perl_autoconf
-        ? "LIBMARPA_BUILD_DIR = core/perl_ac_build\n"
-        : "LIBMARPA_BUILD_DIR = core/gnu_ac_build\n"
+        ? "LIBMARPA_BUILD_DIR = kollos/perl_ac_build\n"
+        : "LIBMARPA_BUILD_DIR = kollos/gnu_ac_build\n"
     );
 
     $postamble .= <<'END_OF_POSTAMBLE';
 xs/R3.c: xs/R3.xs
-	$(XSUBPPRUN) $(XSPROTOARG) $(XSUBPPARGS) $(XSUBPP_EXTRA_ARGS) xs/R3.xs > xs/R3.xsc && $(MV)  xs/R3.xsc xs/R3.c
+	cd xs; $(XSUBPPRUN) $(XSPROTOARG) $(XSUBPPARGS) $(XSUBPP_EXTRA_ARGS) R3.xs > R3.xsc && $(MV) R3.xsc R3.c
 
 xs/R3.o: xs/R3.c
 	$(CC) -c $(PASTHRU_INC) -I$(LIBMARPA_BUILD_DIR) -Ixs \
@@ -611,27 +611,27 @@ xs/R3.o: xs/R3.c
 # This might be accomplished more easily by adding
 # AM_MAINTAINER_MODe([disable]) to configure.ac
 
-core/gnu_ac_build/.libs/libmarpa$(LIB_EXT): core/read_only/stamp-h1
-	$(TOUCH) core/gnu_ac_build/aclocal.m4
-	$(TOUCH) core/gnu_ac_build/configure
-	$(TOUCH) core/gnu_ac_build/config.h.in
-	cd core/gnu_ac_build; make
+kollos/gnu_ac_build/.libs/libmarpa$(LIB_EXT): kollos/read_only/stamp-h1
+	-$(TOUCH) kollos/gnu_ac_build/aclocal.m4
+	-$(TOUCH) kollos/gnu_ac_build/configure
+	-$(TOUCH) kollos/gnu_ac_build/config.h.in
+	cd kollos/gnu_ac_build && $(MAKE)
 
-core/perl_ac_build/libmarpa$(LIB_EXT): core/read_only/stamp-h1
-	cd core/perl_ac_build; make
+kollos/perl_ac_build/libmarpa$(LIB_EXT): kollos/read_only/stamp-h1
+	cd kollos/perl_ac_build && $(MAKE)
 
 END_OF_POSTAMBLE
 
     if ($use_perl_autoconf) {
         $postamble .= <<'EOT';
-$(MYEXTLIB): core/perl_ac_build/libmarpa$(LIB_EXT)
+$(MYEXTLIB): kollos/perl_ac_build/libmarpa$(LIB_EXT)
 	cp $? $@
 
 EOT
     } ## end if ($use_perl_autoconf)
     else {
         $postamble .= <<'EOT';
-$(MYEXTLIB): core/gnu_ac_build/.libs/libmarpa$(LIB_EXT)
+$(MYEXTLIB): kollos/gnu_ac_build/.libs/libmarpa$(LIB_EXT)
 	cp $? $@
 
 EOT
